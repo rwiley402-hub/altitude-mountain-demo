@@ -1,0 +1,37 @@
+{
+  "images": {
+    "valley-station":  "photo-1664901886091-a21a72f9551c",
+    "hotel":           "photo-1610803523148-a0052fa341bb",
+    "chalets":         "photo-1515496281361-241a540151a5",
+    "mid-station":     "photo-1749151068114-14fa7a506c52",
+    "hut":             "photo-1781458366698-6e4e52de9e54",
+    "summit-station":  "photo-1743181496854-5131111ffc7f",
+    "hut-bar":         "photo-1781458526395-e8b8abb10a68",
+    "dinner":          "photo-1414235077428-338989a2e8c0",
+    "restaurant":      "photo-1517248135467-4c7edcad34c4",
+    "skis-stack":      "photo-1638914784346-881bcdd56aa7",
+    "skis-snow":       "photo-1641799540167-44c4865934e9",
+    "ski-rack":        "photo-1486684338211-1a7ced564b0d",
+    "sauna-modern":    "photo-1757940661240-f2e8d2ff93bf",
+    "sauna-view":      "photo-1786799901347-e45b3e2d64ea",
+    "sauna-steam":     "photo-1660735698223-23a4edefa264",
+    "ski-school":      "photo-1621173041985-7ce373b46572",
+    "skier":           "photo-1504827274833-7db1774520e3",
+    "gondola-summer":  "photo-1596778902786-43d753a0bcfc",
+    "lift-pylon":      "photo-1553463719-b5c5abd59b39",
+    "peaks-dawn":      "photo-1506905925346-21bda4d32df4",
+    "night-peak":      "photo-1519681393784-d120267933ba",
+    "alpenglow":       "photo-1549880338-65ddcdfd017b",
+    "summer-valley":   "photo-1464822759023-fed622ff2c3b",
+    "summer-hut":      "photo-1791493117441-159083792225",
+    "chalet-winter":   "photo-1505322491781-b5b70b3f370c",
+    "cabin-ridge":     "photo-1613358024823-357ede526cc3"
+  },
+  "videos": {
+    "hero":       "12037073/12037073-hd_1920_1080_24fps",
+    "lift-board": "11898505/11898505-hd_1920_1080_60fps",
+    "summit":     "19825353/19825353-hd_1920_1080_30fps",
+    "night":      "857195/857195-hd_1280_720_25fps",
+    "trees":      "20659486/20659486-hd_1920_1080_24fps"
+  }
+}

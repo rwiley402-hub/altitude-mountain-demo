@@ -1,0 +1,1840 @@
+<title>Altitude Mountain Platform</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..900;1,6..96,400..700&family=Archivo:wght@300..700&family=IBM+Plex+Mono:wght@300;400;500&display=swap">
+
+<style>
+/* Layout concept: the page is an ascent — a fixed altitude rail on the left climbs
+   1,050 m (valley) to 2,600 m (summit) as you scroll, and every band is pinned to a station. */
+:root{
+  --void:#04070D; --deep:#080D16; --surface:#0E1623; --raise:#16202F; --raise-2:#1D2A3C;
+  --line:rgba(150,185,220,.13); --line-2:rgba(150,185,220,.30);
+  --snow:#EDF3FA; --mute:#93A7C0; --dim:#63768F;
+  --ice:#78E3F0; --ice-deep:#2E8E9C; --alpen:#FF7A45; --alpen-deep:#8A3C1E;
+  --open:#5EE6A8; --hold:#F2C14E; --shut:#FF6B6B;
+  --d:"Bodoni Moda",Didot,"Times New Roman",serif;
+  --b:Archivo,"Helvetica Neue",Arial,sans-serif;
+  --m:"IBM Plex Mono",ui-monospace,SFMono-Regular,Consolas,monospace;
+  --gut:max(18px,env(safe-area-inset-left,0px));
+  --gut-r:max(18px,env(safe-area-inset-right,0px));
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--void);color:var(--snow);
+  font-family:var(--b);font-size:16px;line-height:1.62;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden;
+}
+img,video{max-width:100%;display:block}
+a{color:var(--ice);text-decoration:none}
+h1,h2,h3,h4{margin:0;text-wrap:balance;font-weight:500;overflow-wrap:break-word;min-width:0}
+p{margin:0}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+:focus-visible{outline:2px solid var(--ice);outline-offset:3px;border-radius:2px}
+
+/* ---------- shared ---------- */
+.wrap{width:100%;max-width:1340px;margin:0 auto;padding-left:var(--gut);padding-right:var(--gut-r)}
+/* the altitude rail lives in the left margin, so content steps right to clear it */
+@media(min-width:1180px){.wrap{padding-left:168px;padding-right:44px}}
+[hidden]{display:none!important}
+.band{padding-block:clamp(60px,9vw,128px);position:relative}
+.eyebrow{font-family:var(--m);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--ice);
+  display:flex;align-items:center;gap:6px 10px;font-weight:400;flex-wrap:wrap;min-width:0}
+.eyebrow::before{content:"";width:26px;height:1px;background:var(--ice);opacity:.6;flex:none}
+.eyebrow .alt{color:var(--dim);margin-left:auto;letter-spacing:.14em}
+.h-xl{font-family:var(--d);font-weight:500;font-size:clamp(38px,7.6vw,104px);line-height:.94;letter-spacing:-.018em}
+.h-lg{font-family:var(--d);font-weight:500;font-size:clamp(30px,4.6vw,60px);line-height:1.02;letter-spacing:-.012em}
+.h-md{font-family:var(--d);font-weight:500;font-size:clamp(22px,2.6vw,32px);line-height:1.12}
+.lede{color:var(--mute);font-size:clamp(15px,1.25vw,19px);max-width:62ch;font-weight:300}
+.mono{font-family:var(--m)}
+.num{font-family:var(--m);font-variant-numeric:tabular-nums}
+.rule{height:1px;background:var(--line);border:0;margin:0}
+.sec-head{display:flex;flex-direction:column;gap:18px;margin-bottom:clamp(30px,4vw,56px)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:3px}
+.tag{font-family:var(--m);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;
+  padding:4px 9px;border:1px solid var(--line-2);border-radius:999px;color:var(--mute);white-space:nowrap}
+
+/* reveal — visible at rest, armed by JS only when motion is welcome */
+.rv-armed .rv{opacity:0;transform:translateY(22px)}
+.rv{transition:opacity .9s cubic-bezier(.16,.84,.34,1),transform .9s cubic-bezier(.16,.84,.34,1)}
+.rv.in{opacity:1;transform:none}
+
+/* ---------- film grain + vignette ---------- */
+#grain,#vig{position:fixed;inset:0;pointer-events:none;z-index:90}
+#grain{opacity:.055;mix-blend-mode:screen}
+#vig{z-index:89;background:radial-gradient(118% 88% at 50% 44%,transparent 38%,rgba(2,4,8,.62) 100%)}
+
+/* ---------- top bar ---------- */
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:70;
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  background:linear-gradient(180deg,rgba(4,7,13,.92),rgba(4,7,13,.66));border-bottom:1px solid var(--line)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:71;background:#04070D}
+.top .wrap{display:flex;align-items:center;gap:18px;height:60px}
+.logo{display:flex;align-items:baseline;gap:9px;font-family:var(--d);font-size:21px;letter-spacing:.01em}
+.logo i{font-style:normal;color:var(--ice)}
+.logo small{font-family:var(--m);font-size:9.5px;letter-spacing:.2em;color:var(--dim);text-transform:uppercase}
+.topnav{display:flex;gap:26px;margin-left:auto;font-size:12.5px;color:var(--mute);font-family:var(--m);letter-spacing:.04em}
+.topnav a:hover{color:var(--snow)}
+.top-live{display:flex;align-items:center;gap:8px;font-family:var(--m);font-size:11.5px;color:var(--mute);
+  border-left:1px solid var(--line);padding-left:16px;white-space:nowrap}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--open);box-shadow:0 0 10px var(--open)}
+@media(max-width:1000px){.topnav{display:none}}
+@media(max-width:560px){.top-live{display:none}}
+
+/* ---------- altitude rail ---------- */
+.rail{position:fixed;left:max(14px,env(safe-area-inset-left,0px));top:50%;transform:translateY(-50%);
+  z-index:60;width:120px;pointer-events:none;display:none}
+@media(min-width:1180px){.rail{display:block}}
+.rail-line{position:relative;height:46vh;width:1px;background:linear-gradient(180deg,var(--line-2),var(--line));margin-left:7px}
+.rail-tick{position:absolute;left:-7px;width:15px;display:flex;align-items:center;gap:8px}
+.rail-tick b{display:block;width:7px;height:1px;background:var(--line-2);flex:none}
+.rail-tick span{font-family:var(--m);font-size:9.5px;letter-spacing:.1em;color:var(--dim);white-space:nowrap;
+  transition:color .4s,opacity .4s;opacity:.55}
+.rail-tick.on span{color:var(--ice);opacity:1}
+.rail-dot{position:absolute;left:-3.5px;width:8px;height:8px;border-radius:50%;background:var(--ice);
+  box-shadow:0 0 14px var(--ice);transition:top .45s cubic-bezier(.2,.8,.3,1)}
+.rail-read{font-family:var(--m);margin-top:16px;color:var(--snow);font-size:26px;letter-spacing:-.02em}
+.rail-read s{text-decoration:none;font-size:11px;color:var(--dim);letter-spacing:.14em}
+
+/* ---------- hero ---------- */
+.hero{position:relative;min-height:clamp(560px,86vh,820px);display:flex;align-items:flex-end;
+  overflow:hidden;border-bottom:1px solid var(--line)}
+.hero-media{position:absolute;inset:0;z-index:0}
+.hero-media video,.hero-media img{width:100%;height:100%;object-fit:cover;
+  filter:saturate(.72) contrast(1.08) brightness(.56)}
+.hero-media::after{content:"";position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(4,7,13,.72) 0%,rgba(4,7,13,.22) 34%,rgba(4,7,13,.92) 100%),
+             linear-gradient(90deg,rgba(4,7,13,.78),transparent 62%)}
+#snowfall{position:absolute;inset:0;z-index:1;pointer-events:none}
+.bar{position:absolute;left:0;right:0;height:9vh;background:#04070D;z-index:4;
+  transition:height 1.5s cubic-bezier(.2,.9,.25,1)}
+.bar.t{top:0;border-bottom:1px solid rgba(120,227,240,.14)}
+.bar.b{bottom:0;border-top:1px solid rgba(120,227,240,.14)}
+.hero.open .bar{height:0}
+.hero-in{position:relative;z-index:5;width:100%;padding-block:clamp(40px,7vh,96px)}
+.hero h1{margin:16px 0 0}
+.hero h1 .ln{display:block;overflow:hidden}
+.hero h1 .ln i{display:block;font-style:normal;transform:translateY(102%);
+  transition:transform 1.15s cubic-bezier(.18,.86,.28,1)}
+.hero.open h1 .ln i{transform:none}
+.hero h1 .ln:nth-child(2) i{transition-delay:.13s}
+.hero h1 em{font-style:italic;color:var(--ice)}
+.hero-sub{margin-top:24px;display:flex;flex-wrap:wrap;gap:12px 30px;align-items:flex-end}
+.hero-sub p{max-width:46ch}
+.hero-stats{display:flex;flex-wrap:wrap;gap:0;margin-top:34px;border-top:1px solid var(--line)}
+.hero-stats div{flex:1 1 150px;min-width:0;padding:16px 16px 4px 0;border-right:1px solid var(--line)}
+.hero-stats s{overflow-wrap:anywhere}
+@media(max-width:560px){.hero-stats div{flex:1 1 44%}}
+.hero-stats div:last-child{border-right:0}
+.hero-stats b{display:block;font-family:var(--m);font-size:clamp(20px,2.2vw,27px);font-weight:400;letter-spacing:-.02em}
+.hero-stats s{text-decoration:none;display:block;font-family:var(--m);font-size:10px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--dim);margin-top:3px}
+.scrollcue{position:absolute;right:var(--gut-r);bottom:calc(9vh + 22px);z-index:6;writing-mode:vertical-rl;
+  font-family:var(--m);font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--dim);
+  display:flex;align-items:center;gap:12px}
+.scrollcue::after{content:"";width:1px;height:52px;background:linear-gradient(180deg,var(--ice),transparent);
+  animation:cue 2.4s ease-in-out infinite}
+@keyframes cue{0%,100%{opacity:.25;transform:scaleY(.4);transform-origin:top}50%{opacity:1;transform:scaleY(1)}}
+@media(max-width:640px){.scrollcue{display:none}}
+
+/* ---------- 3d ridge ---------- */
+.ridge-wrap{position:relative;border:1px solid var(--line);border-radius:3px;overflow:hidden;background:var(--deep)}
+#ridge{display:block;width:100%;height:clamp(380px,62vh,640px);touch-action:pan-y}
+.ridge-ov{position:absolute;inset:0;pointer-events:none}
+.mk{position:absolute;transform:translate(-50%,-100%);transition:opacity .35s;will-change:transform}
+.mk-in{display:flex;flex-direction:column;align-items:center;gap:0;transform:translateY(-10px)}
+.mk-lab{font-family:var(--m);font-size:10.5px;letter-spacing:.08em;white-space:nowrap;
+  background:rgba(8,13,22,.84);border:1px solid var(--line-2);padding:4px 9px;border-radius:2px;
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.mk-lab b{color:var(--ice);font-weight:400}
+.mk-lab em{font-style:normal;color:var(--dim)}
+.mk.warn .mk-lab{border-color:var(--shut);box-shadow:0 0 0 1px rgba(255,107,107,.25),0 0 22px rgba(255,107,107,.3)}
+.mk.warn .mk-lab b{color:var(--shut)}
+.mk-stem{width:1px;height:26px;background:linear-gradient(180deg,var(--line-2),transparent)}
+.ridge-hud{position:absolute;left:14px;bottom:12px;right:14px;display:flex;flex-wrap:wrap;gap:8px 16px;
+  align-items:center;font-family:var(--m);font-size:10.5px;letter-spacing:.1em;color:var(--dim);
+  text-transform:uppercase;pointer-events:none}
+.ridge-ctl{position:absolute;left:14px;right:14px;top:14px;display:flex;gap:8px;flex-wrap:wrap;
+  justify-content:flex-end}
+@media(max-width:600px){.mk-lab{font-size:9px;padding:3px 6px}.ridge-ctl .btn{font-size:10px;padding:8px 11px}}
+.btn{font-family:var(--m);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  padding:9px 15px;border:1px solid var(--line-2);border-radius:2px;background:rgba(8,13,22,.78);
+  color:var(--mute);transition:.25s;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.btn:hover{color:var(--snow);border-color:var(--ice);box-shadow:0 0 22px rgba(120,227,240,.14)}
+.btn.on{color:var(--void);background:var(--ice);border-color:var(--ice)}
+.btn.danger{color:var(--shut);border-color:rgba(255,107,107,.42)}
+.btn.danger:hover{background:var(--shut);color:#1A0608;border-color:var(--shut);box-shadow:0 0 24px rgba(255,107,107,.3)}
+.btn[disabled]{opacity:.34;cursor:not-allowed;box-shadow:none;border-color:var(--line)}
+.btn-row{display:flex;flex-wrap:wrap;gap:9px}
+
+/* ---------- grids ---------- */
+.g{display:grid;gap:clamp(14px,1.6vw,22px)}
+.g2{grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr))}
+/* nine modules read as three rows of three, never one card alone */
+@media(min-width:900px){#plates{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.g4{grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr))}
+.split{display:grid;gap:clamp(22px,3vw,52px);grid-template-columns:minmax(0,1fr)}
+@media(min-width:960px){.split{grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);align-items:start}
+  .split.wide-l{grid-template-columns:minmax(0,1.35fr) minmax(0,1fr)}}
+
+/* ---------- module plates ---------- */
+.plate{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:3px;background:var(--deep);
+  min-height:270px;display:flex;flex-direction:column;justify-content:flex-end;isolation:isolate}
+.plate img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:-2;
+  filter:saturate(.68) brightness(.52) contrast(1.06);transition:transform 1.3s cubic-bezier(.2,.8,.3,1),filter .7s}
+.plate::after{content:"";position:absolute;inset:0;z-index:-1;
+  background:linear-gradient(180deg,rgba(4,7,13,.1) 30%,rgba(4,7,13,.9) 100%)}
+.plate:hover img{transform:scale(1.07);filter:saturate(.95) brightness(.62) contrast(1.06)}
+.plate-txt{padding:20px;display:flex;flex-direction:column;gap:9px}
+.plate-txt h3{font-family:var(--d);font-size:24px}
+.plate-txt p{font-size:13.5px;color:var(--mute);font-weight:300;line-height:1.5}
+.plate-no{position:absolute;top:16px;left:20px;font-family:var(--m);font-size:10px;letter-spacing:.2em;
+  color:var(--ice);opacity:.8}
+.plate ul{margin:4px 0 0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:6px}
+.plate ul li{font-family:var(--m);font-size:10px;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--dim);border:1px solid var(--line);padding:3px 7px;border-radius:2px}
+
+/* ---------- reel ---------- */
+.reel-monitor{position:relative;border:1px solid var(--line);border-radius:3px;overflow:hidden;background:#000;
+  aspect-ratio:16/9;max-width:100%}
+.reel-monitor video{width:100%;height:100%;object-fit:cover;filter:saturate(.8) contrast(1.06)}
+.reel-scan{position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(180deg,rgba(255,255,255,.028) 0 1px,transparent 1px 3px)}
+.reel-tc{position:absolute;left:12px;top:12px;font-family:var(--m);font-size:11px;letter-spacing:.12em;
+  color:var(--ice);background:rgba(4,7,13,.7);padding:4px 8px;border-radius:2px;display:flex;gap:10px}
+.reel-tc i{font-style:normal;color:var(--shut);animation:rec 1.6s steps(1) infinite}
+@keyframes rec{0%,49%{opacity:1}50%,100%{opacity:.15}}
+.reel-cap{position:absolute;left:12px;right:12px;bottom:12px;display:flex;justify-content:space-between;
+  gap:12px;font-family:var(--m);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);
+  background:linear-gradient(180deg,transparent,rgba(4,7,13,.8));padding-top:22px}
+.strip{display:flex;gap:10px;overflow-x:auto;padding:12px 2px 4px;scrollbar-width:thin}
+.strip button{position:relative;flex:0 0 150px;aspect-ratio:16/9;border:1px solid var(--line);border-radius:2px;
+  overflow:hidden;transition:.3s;filter:grayscale(.55) brightness(.6)}
+.strip button:hover{filter:none;border-color:var(--line-2)}
+.strip button.on{filter:none;border-color:var(--ice);box-shadow:0 0 0 1px var(--ice),0 0 22px rgba(120,227,240,.2)}
+.strip img{width:100%;height:100%;object-fit:cover}
+.strip span{position:absolute;left:6px;bottom:5px;font-family:var(--m);font-size:9px;letter-spacing:.1em;
+  color:var(--snow);background:rgba(4,7,13,.72);padding:2px 5px;border-radius:2px}
+.sprocket{height:13px;background-image:radial-gradient(circle at 7px 50%,var(--void) 3.4px,transparent 3.6px);
+  background-size:20px 13px;background-color:var(--raise);border-radius:2px;opacity:.75}
+
+/* ---------- folio ---------- */
+.folio{display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}
+@media(min-width:1000px){.folio{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr)}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.panel-h{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg,rgba(29,42,60,.5),transparent);flex-wrap:wrap}
+.panel-h h3{font-family:var(--m);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute);font-weight:400}
+.panel-h .r{margin-left:auto;font-family:var(--m);font-size:11px;color:var(--dim);letter-spacing:.08em}
+.ledger{width:100%;border-collapse:collapse;font-family:var(--m);font-size:12.5px}
+.ledger th{text-align:left;font-weight:400;font-size:9.5px;letter-spacing:.17em;text-transform:uppercase;
+  color:var(--dim);padding:9px 14px;border-bottom:1px solid var(--line);white-space:nowrap}
+.ledger td{padding:10px 14px;border-bottom:1px solid rgba(150,185,220,.07);vertical-align:top}
+.ledger tr:last-child td{border-bottom:0}
+.ledger .amt{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.ledger .out{color:var(--ice);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+.ledger .dsc{color:var(--snow);font-family:var(--b);font-size:13.5px;font-weight:300;line-height:1.35}
+.ledger .vat{color:var(--dim);font-size:10px;letter-spacing:.06em}
+.ledger tr.inc .amt{color:var(--open)}
+.ledger tr.void{color:var(--dim)}
+.ledger tr.void .dsc,.ledger tr.void .amt{text-decoration:line-through;text-decoration-color:var(--shut);opacity:.62}
+.ledger tr.void .out{color:var(--dim)}
+.voidnote{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-top:7px;
+  font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--shut);
+  animation:vin .55s cubic-bezier(.2,.9,.3,1)}
+.voidnote s{text-decoration:none;color:var(--dim)}
+@keyframes vin{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:none}}
+.stamp{border:1px solid var(--shut);color:var(--shut);padding:1px 6px;border-radius:2px;font-weight:500}
+.tot{display:flex;flex-direction:column;gap:7px;padding:14px 16px;border-top:1px solid var(--line);
+  background:rgba(29,42,60,.3);font-family:var(--m);font-size:12.5px}
+.tot div{display:flex;justify-content:space-between;gap:16px;color:var(--mute)}
+.tot div.big{color:var(--snow);font-size:19px;padding-top:7px;border-top:1px solid var(--line);margin-top:3px;
+  letter-spacing:-.01em}
+.tot div.big b{font-weight:400;transition:color .4s}
+.tot .zero b{color:var(--open)}
+.bars{display:flex;flex-direction:column;gap:11px;padding:16px}
+.bar-row{display:grid;gap:4px}
+.bar-top{display:flex;justify-content:space-between;gap:10px;font-family:var(--m);font-size:11px;letter-spacing:.06em}
+.bar-top span{color:var(--mute);text-transform:uppercase;font-size:10px;letter-spacing:.13em;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar-top b{font-weight:400;color:var(--snow);font-variant-numeric:tabular-nums;white-space:nowrap}
+.bar-trk{height:5px;background:var(--raise);border-radius:2px;overflow:hidden}
+.bar-fil{height:100%;background:linear-gradient(90deg,var(--ice-deep),var(--ice));border-radius:2px;
+  transition:width .85s cubic-bezier(.2,.84,.3,1)}
+.bar-row.nil .bar-fil{background:var(--shut)}
+.bar-row.nil b{color:var(--dim)}
+.pay{display:flex;flex-direction:column;gap:13px;padding:16px}
+.payline{display:flex;align-items:center;gap:11px;font-family:var(--m);font-size:12.5px;
+  padding:11px 13px;border:1px solid var(--line);border-radius:2px;background:var(--raise);
+  animation:vin .5s cubic-bezier(.2,.9,.3,1)}
+.payline b{margin-left:auto;font-weight:400;font-variant-numeric:tabular-nums}
+.payline i{font-style:normal;width:7px;height:7px;border-radius:50%;background:var(--ice);flex:none}
+.payline.cash i{background:var(--alpen)}
+.slider{width:100%;accent-color:var(--ice)}
+.vatgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line);
+  border-top:1px solid var(--line)}
+.vatgrid div{background:var(--surface);padding:11px 13px;font-family:var(--m);font-size:11px}
+.vatgrid s{text-decoration:none;display:block;color:var(--dim);font-size:9.5px;letter-spacing:.14em;
+  text-transform:uppercase;margin-bottom:3px}
+.closed-stamp{position:absolute;right:18px;top:50%;transform:translateY(-50%) rotate(-11deg);
+  font-family:var(--m);font-size:13px;letter-spacing:.24em;color:var(--open);border:2px solid var(--open);
+  padding:7px 14px;border-radius:3px;opacity:0;transition:opacity .5s,transform .5s;pointer-events:none}
+.closed-stamp.on{opacity:.9;transform:translateY(-50%) rotate(-7deg) scale(1)}
+
+/* ---------- weather ---------- */
+.wx{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr))}
+.wx-card{background:var(--surface);border:1px solid var(--line);border-radius:3px;padding:15px;
+  display:flex;flex-direction:column;gap:11px;transition:border-color .45s,box-shadow .45s,background .45s}
+.wx-card.alert{border-color:var(--shut);background:linear-gradient(180deg,rgba(255,107,107,.08),var(--surface));
+  box-shadow:0 0 0 1px rgba(255,107,107,.22),0 10px 42px -18px rgba(255,107,107,.5)}
+.wx-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.wx-top h4{font-family:var(--b);font-size:14px;font-weight:400;line-height:1.25}
+.wx-top s{text-decoration:none;font-family:var(--m);font-size:10.5px;color:var(--ice);white-space:nowrap}
+.wx-temp{font-family:var(--m);font-size:34px;letter-spacing:-.03em;line-height:1;display:flex;
+  align-items:baseline;gap:8px}
+.wx-temp em{font-style:normal;font-size:11px;color:var(--mute);letter-spacing:.1em;text-transform:uppercase}
+.wx-dial{display:flex;align-items:center;gap:11px}
+.wx-dial canvas{flex:none}
+.wx-gust{font-family:var(--m);font-size:11px;color:var(--mute);line-height:1.5}
+.wx-gust b{display:block;font-size:17px;color:var(--snow);font-weight:400;letter-spacing:-.01em}
+.wx-card.alert .wx-gust b{color:var(--shut)}
+.wx-meta{display:flex;flex-wrap:wrap;gap:5px}
+.wx-meta span{font-family:var(--m);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--dim);border:1px solid var(--line);padding:3px 6px;border-radius:2px}
+.wx-warn{font-family:var(--m);font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--shut);
+  display:flex;align-items:center;gap:7px;animation:vin .5s}
+.limitbox{display:flex;flex-direction:column;gap:13px;padding:17px;background:var(--surface);
+  border:1px solid var(--line);border-radius:3px}
+.limitval{font-family:var(--m);font-size:30px;letter-spacing:-.02em;color:var(--ice)}
+.affect{display:flex;flex-direction:column;gap:0;border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.aff{display:flex;align-items:center;gap:12px;padding:12px 15px;border-bottom:1px solid var(--line);
+  background:var(--surface);transition:background .4s,color .4s;flex-wrap:wrap}
+.aff:last-child{border-bottom:0}
+.aff-k{font-family:var(--m);font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--dim);
+  width:74px;flex:none}
+.aff-n{font-size:13.5px;font-weight:300;flex:1 1 150px;min-width:0}
+.aff-n s{text-decoration:none;display:block;font-family:var(--m);font-size:10px;color:var(--dim);letter-spacing:.07em}
+.pill{font-family:var(--m);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;padding:4px 9px;
+  border-radius:999px;border:1px solid;white-space:nowrap;transition:.4s}
+.pill.ok{color:var(--open);border-color:rgba(94,230,168,.38);background:rgba(94,230,168,.07)}
+.pill.warn{color:var(--shut);border-color:rgba(255,107,107,.45);background:rgba(255,107,107,.1)}
+.pill.hold{color:var(--hold);border-color:rgba(242,193,78,.4);background:rgba(242,193,78,.08)}
+.aff.hit{background:linear-gradient(90deg,rgba(255,107,107,.1),var(--surface))}
+.metjson{font-family:var(--m);font-size:11px;line-height:1.75;color:var(--mute);background:var(--deep);
+  border:1px solid var(--line);border-radius:3px;padding:14px 16px;overflow-x:auto;white-space:pre}
+.metjson k{color:var(--ice)}
+.metjson v{color:var(--alpen)}
+
+/* ---------- lobby tv ---------- */
+.tv{border:1px solid var(--line-2);border-radius:5px;background:#000;padding:11px;position:relative;
+  box-shadow:0 36px 90px -40px rgba(0,0,0,.95),inset 0 0 0 1px rgba(150,185,220,.07)}
+.tv-screen{background:radial-gradient(130% 110% at 50% 0%,#0D1726,#04070D);border-radius:3px;
+  padding:clamp(16px,2.4vw,26px);display:grid;gap:16px;position:relative;overflow:hidden}
+.tv-screen::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(180deg,rgba(255,255,255,.02) 0 1px,transparent 1px 3px)}
+.tv-head{display:flex;justify-content:space-between;align-items:baseline;gap:14px;flex-wrap:wrap;
+  border-bottom:1px solid var(--line);padding-bottom:12px}
+.tv-head h4{font-family:var(--d);font-size:clamp(19px,2.4vw,27px)}
+.tv-head s{text-decoration:none;font-family:var(--m);font-size:12px;color:var(--ice);letter-spacing:.1em}
+.tv-grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr))}
+.tv-wx{border:1px solid var(--line);border-radius:3px;padding:13px;display:flex;flex-direction:column;gap:5px}
+.tv-wx s{text-decoration:none;font-family:var(--m);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+.tv-wx b{font-family:var(--m);font-size:clamp(24px,3vw,32px);font-weight:400;letter-spacing:-.025em}
+.tv-wx span{font-family:var(--m);font-size:11px;color:var(--mute)}
+.tv-lifts{display:flex;flex-direction:column;gap:7px}
+.tv-lift{display:flex;align-items:center;gap:10px;font-family:var(--m);font-size:12px;
+  padding:7px 10px;border:1px solid var(--line);border-radius:2px}
+.tv-lift span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--mute)}
+.av{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.av-steps{display:flex;gap:4px}
+.av-steps i{width:26px;height:9px;border-radius:1px;background:var(--raise-2);font-style:normal}
+.av-steps i.on:nth-child(1){background:var(--open)}
+.av-steps i.on:nth-child(2){background:#B9E05E}
+.av-steps i.on:nth-child(3){background:var(--hold)}
+.av-steps i.on:nth-child(4){background:var(--alpen)}
+.av-steps i.on:nth-child(5){background:var(--shut)}
+
+/* ---------- route map ---------- */
+.map{position:relative;border:1px solid var(--line);border-radius:3px;background:
+  linear-gradient(180deg,#0A1220,#060A12);overflow:hidden}
+.map svg{display:block;width:100%;height:auto}
+.map-credit{position:absolute;right:9px;bottom:7px;font-family:var(--m);font-size:9px;color:var(--dim);
+  letter-spacing:.06em;background:rgba(4,7,13,.7);padding:2px 6px;border-radius:2px}
+.stop-l{font-family:var(--m);font-size:9.5px;letter-spacing:.07em}
+
+/* ---------- arch + ci ---------- */
+.arch{display:flex;flex-direction:column;gap:0;border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.arch-row{display:flex;gap:14px;padding:15px 17px;border-bottom:1px solid var(--line);background:var(--surface);
+  align-items:flex-start;flex-wrap:wrap}
+.arch-row:last-child{border-bottom:0}
+.arch-row b{font-family:var(--m);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ice);
+  width:132px;flex:none;padding-top:2px;font-weight:400}
+.arch-row p{font-size:13.5px;color:var(--mute);font-weight:300;flex:1 1 220px;min-width:0;line-height:1.55}
+.arch-row p code{font-family:var(--m);font-size:11.5px;color:var(--snow);background:var(--raise);
+  padding:1px 5px;border-radius:2px;white-space:nowrap}
+.pipe{display:flex;gap:0;flex-wrap:wrap;border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.pipe div{flex:1 1 130px;min-width:0;padding:14px 15px;border-right:1px solid var(--line);background:var(--surface);
+  position:relative}
+.pipe div:last-child{border-right:0}
+.pipe s{text-decoration:none;display:block;font-family:var(--m);font-size:9.5px;letter-spacing:.15em;
+  text-transform:uppercase;color:var(--dim);margin-bottom:5px}
+.pipe b{font-family:var(--b);font-size:13.5px;font-weight:400;display:block;line-height:1.35}
+.pipe div:last-child b{color:var(--open)}
+
+/* ---------- milestones ---------- */
+.ms{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr))}
+.ms-card{background:var(--surface);border:1px solid var(--line);border-radius:3px;padding:17px;
+  display:flex;flex-direction:column;gap:10px;position:relative;overflow:hidden;transition:.4s}
+.ms-card:hover{border-color:var(--line-2);transform:translateY(-3px)}
+.ms-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--ice);
+  opacity:.55;transform:scaleY(var(--p,.3));transform-origin:top}
+.ms-no{font-family:var(--m);font-size:10px;letter-spacing:.2em;color:var(--ice)}
+.ms-card h4{font-family:var(--d);font-size:21px;line-height:1.1}
+.ms-card p{font-size:12.5px;color:var(--mute);font-weight:300;line-height:1.5;flex:1}
+.ms-foot{display:flex;justify-content:space-between;gap:10px;font-family:var(--m);font-size:11px;
+  padding-top:10px;border-top:1px solid var(--line);color:var(--dim)}
+.ms-foot b{color:var(--snow);font-weight:400}
+
+/* ---------- q&a ---------- */
+.qa{display:flex;flex-direction:column;gap:0;border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.qa-item{border-bottom:1px solid var(--line);background:var(--surface)}
+.qa-item:last-child{border-bottom:0}
+.qa-q{display:flex;gap:13px;padding:16px 18px;align-items:flex-start;width:100%;text-align:left}
+.qa-q s{text-decoration:none;font-family:var(--m);font-size:10.5px;color:var(--ice);flex:none;padding-top:3px}
+.qa-q span{flex:1;min-width:0;font-size:15px;font-weight:400}
+.qa-q i{font-style:normal;color:var(--dim);font-family:var(--m);transition:transform .35s}
+.qa-item.open .qa-q i{transform:rotate(45deg)}
+.qa-a{max-height:0;overflow:hidden;transition:max-height .5s cubic-bezier(.2,.8,.3,1)}
+.qa-a div{padding:0 18px 18px 50px;color:var(--mute);font-size:14px;font-weight:300;line-height:1.65}
+.qa-a code{font-family:var(--m);font-size:12px;color:var(--ice);background:var(--raise);padding:1px 5px;border-radius:2px}
+@media(max-width:560px){.qa-a div{padding-left:18px}}
+
+/* ---------- footer ---------- */
+footer{border-top:1px solid var(--line);background:var(--deep)}
+.foot{display:flex;flex-wrap:wrap;gap:26px;justify-content:space-between;padding-block:40px}
+.foot p{font-size:12px;color:var(--dim);max-width:40ch;line-height:1.7;font-weight:300}
+.foot a{color:var(--mute)}
+.foot a:hover{color:var(--ice)}
+.credits{font-family:var(--m);font-size:10.5px;color:var(--dim);letter-spacing:.04em;line-height:1.9}
+
+/* ---------- buildings strip ---------- */
+.bld{display:grid;gap:10px;grid-template-columns:repeat(6,minmax(0,1fr))}
+@media(max-width:1040px){.bld{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:520px){.bld{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.bld article{position:relative;aspect-ratio:3/4.3;border:1px solid var(--line);border-radius:3px;
+  overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;isolation:isolate;min-width:0}
+.bld img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:-2;
+  filter:saturate(.6) brightness(.5) contrast(1.1);transition:transform 1.4s cubic-bezier(.2,.8,.3,1),filter .7s}
+.bld article::after{content:"";position:absolute;inset:0;z-index:-1;
+  background:linear-gradient(180deg,rgba(4,7,13,.15) 34%,rgba(4,7,13,.93) 100%)}
+.bld article:hover img{transform:scale(1.08);filter:saturate(.95) brightness(.62) contrast(1.1)}
+.bld-alt{position:absolute;top:11px;left:12px;font-family:var(--m);font-size:10.5px;letter-spacing:.1em;
+  color:var(--ice);background:rgba(4,7,13,.6);padding:3px 7px;border-radius:2px}
+.bld-txt{padding:13px 12px;display:flex;flex-direction:column;gap:5px}
+.bld-txt h4{font-family:var(--b);font-size:14px;font-weight:400;line-height:1.2}
+.bld-txt p{font-size:11.5px;color:var(--mute);font-weight:300;line-height:1.45;min-height:3.3em}
+
+/* ---------- full-bleed quote ---------- */
+.quote{position:relative;min-height:clamp(360px,54vh,580px);display:flex;align-items:center;
+  overflow:hidden;border-block:1px solid var(--line)}
+.quote img{position:absolute;left:0;top:-12%;width:100%;height:124%;object-fit:cover;z-index:-2;
+  filter:saturate(.62) brightness(.46) contrast(1.1);will-change:transform}
+.quote::after{content:"";position:absolute;inset:0;z-index:-1;
+  background:linear-gradient(90deg,rgba(4,7,13,.88),rgba(4,7,13,.3) 70%),
+             linear-gradient(180deg,rgba(4,7,13,.55),transparent 30%,rgba(4,7,13,.7))}
+.quote blockquote{margin:0;max-width:min(680px,100%)}
+.quote q{display:block;font-family:var(--d);font-style:italic;font-size:clamp(26px,4.2vw,56px);
+  line-height:1.08;letter-spacing:-.012em;quotes:none;text-wrap:balance}
+.quote cite{display:block;margin-top:20px;font-family:var(--m);font-style:normal;font-size:10.5px;
+  letter-spacing:.2em;text-transform:uppercase;color:var(--ice)}
+
+/* ---------- seasons ---------- */
+.season{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr))}
+.season figure{margin:0;position:relative;aspect-ratio:16/11;overflow:hidden;border:1px solid var(--line);
+  border-radius:3px;isolation:isolate;min-width:0}
+.season img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:-2;
+  filter:saturate(.72) brightness(.56) contrast(1.06);transition:transform 1.3s cubic-bezier(.2,.8,.3,1)}
+.season figure:hover img{transform:scale(1.06)}
+.season figure::after{content:"";position:absolute;inset:0;z-index:-1;
+  background:linear-gradient(180deg,transparent 40%,rgba(4,7,13,.9))}
+.season figcaption{position:absolute;left:14px;right:14px;bottom:13px;display:flex;flex-direction:column;gap:4px}
+.season figcaption b{font-family:var(--d);font-size:21px;font-weight:500}
+.season figcaption span{font-family:var(--m);font-size:10.5px;letter-spacing:.1em;color:var(--mute)}
+
+/* ---------- outlet mosaic ---------- */
+.mosaic{display:grid;gap:8px;grid-template-columns:repeat(6,minmax(0,1fr));
+  grid-auto-rows:clamp(78px,9vw,116px)}
+@media(max-width:760px){.mosaic{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.mosaic figure{margin:0;position:relative;overflow:hidden;border:1px solid var(--line);border-radius:3px;
+  isolation:isolate;min-width:0}
+.mosaic img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:-2;
+  filter:saturate(.62) brightness(.52) contrast(1.08);transition:filter .6s,transform 1.2s cubic-bezier(.2,.8,.3,1)}
+.mosaic figure:hover img{filter:saturate(1) brightness(.68);transform:scale(1.07)}
+.mosaic figcaption{position:absolute;left:8px;bottom:6px;font-family:var(--m);font-size:9.5px;
+  letter-spacing:.11em;text-transform:uppercase;color:var(--snow);text-shadow:0 1px 10px rgba(4,7,13,.95)}
+.mosaic .w2{grid-column:span 2}
+.mosaic .h2{grid-row:span 2}
+
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;
+    transition-duration:.001ms!important}
+  .hero .bar{height:0}
+  .hero h1 .ln i{transform:none}
+}
+</style>
+
+<canvas id="grain" aria-hidden="true"></canvas>
+<div id="vig" aria-hidden="true"></div>
+
+<header class="top">
+  <div class="wrap">
+    <div class="logo"><i>▲</i> Altitude <small>Mountain OS</small></div>
+    <nav class="topnav">
+      <a href="#terrain">Terrain</a>
+      <a href="#modules">Modules</a>
+      <a href="#folio">One bill</a>
+      <a href="#weather">Weather</a>
+      <a href="#build">Build</a>
+    </nav>
+    <div class="top-live"><span class="dot"></span><span id="clock">—</span> · Valley <span id="tvalley">−4°</span></div>
+  </div>
+</header>
+
+<aside class="rail" aria-hidden="true">
+  <div class="rail-line" id="railLine">
+    <div class="rail-dot" id="railDot" style="top:0"></div>
+  </div>
+  <div class="rail-read"><span id="railAlt" class="num">1,050</span><s> M ASL</s></div>
+</aside>
+
+<!-- ============ HERO ============ -->
+<section class="hero" id="hero">
+  <div class="hero-media">
+    <video id="heroVid" poster="assets/img/poster-hero.jpg" autoplay muted loop playsinline preload="auto">
+      <source src="assets/video/hero.mp4" type="video/mp4">
+    </video>
+  </div>
+  <canvas id="snowfall" aria-hidden="true"></canvas>
+  <div class="bar t" aria-hidden="true"></div>
+  <div class="bar b" aria-hidden="true"></div>
+  <div class="hero-in">
+    <div class="wrap">
+      <div class="eyebrow">Mountain tourism complex platform <span class="alt">MVP · v1 · 2026</span></div>
+      <h1 class="h-xl">
+        <span class="ln"><i>One mountain.</i></span>
+        <span class="ln"><i><em>One bill.</em></i></span>
+      </h1>
+      <div class="hero-sub">
+        <p class="lede">Hotel, chalets, huts, restaurants from the valley to the summit, gear, spa,
+          lifts and transport — on one platform. Every outlet charges the same folio and still reads
+          its own revenue. The weather warns the staff before the guests notice.</p>
+      </div>
+      <div class="hero-stats">
+        <div><b class="num">6</b><s>Buildings, 1,050–2,600 m</s></div>
+        <div><b class="num">9</b><s>Modules in the MVP</s></div>
+        <div><b class="num">1</b><s>Folio per stay</s></div>
+        <div><b class="num">0</b><s>Rows edited or deleted</s></div>
+      </div>
+    </div>
+  </div>
+  <div class="scrollcue">Ascend</div>
+</section>
+
+<!-- ============ 3D TERRAIN ============ -->
+<section class="band" id="terrain" data-alt="2600" data-station="Summit station">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <div class="eyebrow">01 — The complex <span class="alt">1,050 → 2,600 m</span></div>
+      <h2 class="h-lg">Every building sits at its own altitude,<br>and every altitude has its own weather.</h2>
+      <p class="lede">Drag the ridge to look around. Each marker is a building and a weather point with its own
+        MET&nbsp;Norway forecast. Put the complex into a storm and watch the warnings travel down the mountain.</p>
+    </div>
+    <div class="ridge-wrap rv">
+      <canvas id="ridge"></canvas>
+      <div class="ridge-ov" id="ridgeOv"></div>
+      <div class="ridge-ctl">
+        <button class="btn" id="btnSeason" type="button">Season: Winter</button>
+        <button class="btn danger" id="btnStorm" type="button">Raise the wind</button>
+      </div>
+      <div class="ridge-hud">
+        <span>Drag to orbit</span><span>·</span>
+        <span>Wind <b id="hudWind" class="num" style="color:var(--snow);font-weight:400">22</b> km/h</span><span>·</span>
+        <span>Gusts <b id="hudGust" class="num" style="color:var(--snow);font-weight:400">38</b> km/h</span><span>·</span>
+        <span id="hudState">All lifts running</span>
+      </div>
+    </div>
+    <div class="rv" style="margin-top:22px">
+      <div class="eyebrow" style="margin-bottom:14px">The six buildings <span class="alt">seed data for the pilot</span></div>
+      <div class="bld" id="bld"></div>
+    </div>
+    <div class="g g3 rv" style="margin-top:22px">
+      <div class="card" style="padding:16px">
+        <div class="eyebrow" style="margin-bottom:9px">Weather point</div>
+        <p style="font-size:13.5px;color:var(--mute);font-weight:300">Each building carries coordinates and
+          altitude, so the valley station and the summit get separate forecasts. One hourly server-side fetch
+          feeds every screen.</p>
+      </div>
+      <div class="card" style="padding:16px">
+        <div class="eyebrow" style="margin-bottom:9px">Limits, not rules</div>
+        <p style="font-size:13.5px;color:var(--mute);font-weight:300">The complex sets its own thresholds —
+          gusts at the summit station, snow per day, fog, deep cold. Crossing one raises a warning, never a
+          cancellation.</p>
+      </div>
+      <div class="card" style="padding:16px">
+        <div class="eyebrow" style="margin-bottom:9px">People decide</div>
+        <p style="font-size:13.5px;color:var(--mute);font-weight:300">Staff press “cancel for weather”. The
+          system then does the dull part: it drops the bookings, voids the charges with the reason, and prints
+          the list of guests to call.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ REEL ============ -->
+<section class="band" id="reel" data-alt="2100" data-station="Mountain hut" style="background:var(--deep);border-block:1px solid var(--line)">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <div class="eyebrow">02 — A day on the mountain <span class="alt">05:40 → 23:00</span></div>
+      <h2 class="h-lg">The day the MVP has to run,<br>end to end.</h2>
+    </div>
+    <div class="split wide-l">
+      <div class="rv">
+        <div class="sprocket" aria-hidden="true"></div>
+        <div class="reel-monitor" style="margin-block:9px">
+          <video id="reelVid" poster="assets/img/poster-lift-board.jpg" muted loop playsinline preload="metadata">
+            <source id="reelSrc" src="assets/video/lift-board.mp4" type="video/mp4">
+          </video>
+          <div class="reel-scan" aria-hidden="true"></div>
+          <div class="reel-tc"><i>●</i><span id="tc" class="num">00:00:00:00</span></div>
+          <div class="reel-cap"><span id="reelCap">Valley station · 08:12 · lift opens</span>
+            <span id="reelIdx" class="num">01 / 05</span></div>
+        </div>
+        <div class="sprocket" aria-hidden="true"></div>
+        <div class="strip" id="strip" role="tablist" aria-label="Clips"></div>
+      </div>
+      <div class="rv" style="display:flex;flex-direction:column;gap:0">
+        <div class="arch">
+          <div class="arch-row"><b>05:40</b><p>Nightly posting has already written three room nights and three
+            half-board lines to every open folio, in the complex's own timezone.</p></div>
+          <div class="arch-row"><b>07:55</b><p>The lift operator opens the cable car from a phone. The lobby
+            screen updates inside a minute.</p></div>
+          <div class="arch-row"><b>09:10</b><p>Rental hands out skis, boots and a helmet against a deposit.
+            The same pair cannot go out twice.</p></div>
+          <div class="arch-row"><b>12:30</b><p>Summit restaurant charges lunch to room 214. The till already
+            knows the guest is on half board, so dinner will not be charged again.</p></div>
+          <div class="arch-row"><b>14:12</b><p>Gusts cross the limit at the summit station. Warnings appear on
+            the gondola, two shuttle trips and every outdoor slot at that building.</p></div>
+          <div class="arch-row"><b>16:40</b><p>A ski lesson is cancelled for wind. Its charge is voided with a
+            reason, and the guest list prints at the desk.</p></div>
+          <div class="arch-row"><b>18:05</b><p>Train arrival 14:20 tomorrow has already produced a pickup trip
+            for the transport desk to crew.</p></div>
+          <div class="arch-row"><b>23:00</b><p>Checkout at a zero balance, half card and half cash, and each
+            outlet still reads only what it sold.</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ QUOTE ============ -->
+<section class="quote" data-alt="2600" data-station="Summit station">
+  <img id="qImg" src="assets/img/peaks-dawn.jpg" alt="Snow-covered peaks above a sea of cloud at first light" decoding="async">
+  <div class="wrap">
+    <blockquote>
+      <q>When the wind closes the cable car, the staff should hear it from the system, not from the guests.</q>
+      <cite>MVP scope · section H · weather</cite>
+    </blockquote>
+  </div>
+</section>
+
+<!-- ============ MODULES ============ -->
+<section class="band" id="modules" data-alt="1800" data-station="Mid station">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <div class="eyebrow">03 — Scope <span class="alt">Nine modules, each kept simple</span></div>
+      <h2 class="h-lg">Everything a mountain guest touches,<br>billed in one place.</h2>
+    </div>
+    <div class="g g3 rv" id="plates"></div>
+
+    <div class="rv" style="margin-top:clamp(34px,4.5vw,64px)">
+      <div class="eyebrow" style="margin-bottom:14px">Two seasons, one complex
+        <span class="alt">prices, menus and services differ</span></div>
+      <div class="season">
+        <figure><img src="assets/img/chalet-winter.jpg" alt="A chalet buried in fresh snow" decoding="async">
+          <figcaption><b>Winter</b><span>Ski passes · half board · rental · ski school</span></figcaption></figure>
+        <figure><img src="assets/img/summer-valley.jpg" alt="A green alpine valley under summer cloud" decoding="async">
+          <figcaption><b>Summer</b><span>Pedestrian passes · e-bikes · guided hikes</span></figcaption></figure>
+        <figure><img src="assets/img/summer-hut.jpg" alt="A mountain hut terrace with umbrellas in summer" decoding="async">
+          <figcaption><b>Shoulder</b><span>Hut only · reduced lifts · a shorter menu</span></figcaption></figure>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FOLIO ============ -->
+<section class="band" id="folio" data-alt="1200" data-station="Main hotel" style="background:var(--deep);border-block:1px solid var(--line)">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <div class="eyebrow">04 — The money <span class="alt">Append-only · cents · VAT per line</span></div>
+      <h2 class="h-lg">A summit lunch, a ski lesson, a wind cancellation,<br>and a bill split card and cash.</h2>
+      <p class="lede">This is the folio of stay <span class="mono" style="color:var(--snow)">#4412</span> — three
+        nights, half board, two adults, room 214. Nothing on it is ever edited or deleted. Run the scenario and
+        watch each outlet's revenue stay correct.</p>
+    </div>
+
+    <div class="mosaic rv" style="margin-bottom:22px">
+      <figure class="w2 h2"><img src="assets/img/restaurant.jpg" alt="The panorama restaurant at the summit station" decoding="async">
+        <figcaption>Summit restaurant</figcaption></figure>
+      <figure class="w2"><img src="assets/img/dinner.jpg" alt="A plated dinner service" decoding="async">
+        <figcaption>Half board · dinner</figcaption></figure>
+      <figure class="w2"><img src="assets/img/hut-bar.jpg" alt="The bar of a mountain hut with peaks behind" decoding="async">
+        <figcaption>Hut kitchen</figcaption></figure>
+      <figure><img src="assets/img/skis-snow.jpg" alt="A pair of skis on groomed snow" decoding="async">
+        <figcaption>Rental</figcaption></figure>
+      <figure><img src="assets/img/ski-school.jpg" alt="A ski school group on the snow" decoding="async">
+        <figcaption>Ski school</figcaption></figure>
+      <figure><img src="assets/img/sauna-view.jpg" alt="A sauna with a view over the forest" decoding="async">
+        <figcaption>Spa</figcaption></figure>
+      <figure><img src="assets/img/lift-pylon.jpg" alt="A lift pylon above a snowy piste" decoding="async">
+        <figcaption>Lift passes</figcaption></figure>
+      <figure class="w2"><img src="assets/img/skier.jpg" alt="A skier on an open slope" decoding="async">
+        <figcaption>Guided descent</figcaption></figure>
+      <figure class="w2"><img src="assets/img/sauna-steam.jpg" alt="Steam rising from the stones of a sauna heater" decoding="async">
+        <figcaption>Sauna · included in the stay</figcaption></figure>
+      <figure class="w2"><img src="assets/img/ski-rack.jpg" alt="Skis stacked on the outside of a cable car" decoding="async">
+        <figcaption>Gear on the cable car</figcaption></figure>
+    </div>
+
+    <div class="btn-row rv" style="margin-bottom:16px">
+      <button class="btn danger" id="btnVoid" type="button">Cancel ski lesson — wind</button>
+      <button class="btn" id="btnSettle" type="button">Settle · half card, half cash</button>
+      <button class="btn" id="btnReset" type="button">Reset the day</button>
+    </div>
+
+    <div class="folio rv">
+      <div class="panel" style="position:relative">
+        <div class="panel-h">
+          <h3>Folio #4412</h3>
+          <span class="r">Hochtal Alpin · room 214 · 3 nights · half board</span>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="ledger" id="ledger">
+            <thead><tr><th>Outlet</th><th>Charge</th><th>VAT</th><th class="amt">Gross</th></tr></thead>
+            <tbody id="ledgerBody"></tbody>
+          </table>
+        </div>
+        <div class="tot">
+          <div><span>Charges, not voided</span><b class="num" id="tCharges">€0.00</b></div>
+          <div><span>Voided</span><b class="num" id="tVoid">€0.00</b></div>
+          <div><span>Paid</span><b class="num" id="tPaid">€0.00</b></div>
+          <div class="big" id="balRow"><span>Balance</span><b class="num" id="tBal">€0.00</b></div>
+        </div>
+        <div class="closed-stamp" id="stamp">Checked out</div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:14px;min-width:0">
+        <div class="panel">
+          <div class="panel-h"><h3>Revenue by outlet</h3><span class="r" id="revNote">from charge lines</span></div>
+          <div class="bars" id="bars"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-h"><h3>Payments</h3><span class="r">cash report reads here</span></div>
+          <div class="pay" id="payBox">
+            <p style="font-family:var(--m);font-size:11.5px;color:var(--dim);letter-spacing:.06em">
+              Balance due €1,383.00 · no payment recorded yet.</p>
+          </div>
+          <div class="vatgrid" id="vatGrid"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="g g2 rv" style="margin-top:26px">
+      <div class="card" style="padding:18px">
+        <div class="eyebrow" style="margin-bottom:11px">How a void is stored</div>
+        <p style="font-size:13.5px;color:var(--mute);font-weight:300;margin-bottom:11px">The charge row is never
+          touched. A void is a separate insert in <code class="mono" style="color:var(--snow)">charge_voids</code>
+          holding the charge id, the user, the UTC timestamp, a reason code and a note. A charge counts toward the
+          balance and the reports only when it has no void row.</p>
+        <div class="metjson"><k>charge_voids</k>
+  <k>charge_id</k>   <v>chg_7f31</v>
+  <k>voided_by</k>   <v>usr_bauer_m (manager)</v>
+  <k>voided_at</k>   <v>2026-02-14T13:12:44Z</v>
+  <k>reason_code</k> <v>weather</v>
+  <k>note</k>        <v>"gusts 94 km/h at 2,600 m"</v></div>
+      </div>
+      <div class="card" style="padding:18px">
+        <div class="eyebrow" style="margin-bottom:11px">Why the outlets stay honest</div>
+        <p style="font-size:13.5px;color:var(--mute);font-weight:300">Outlet revenue is read from charge lines,
+          never from payments. The cash report is read from payments, never from charges. A bill split between
+          card and cash touches no outlet total, and a weather void removes exactly one outlet's line. Every
+          figure traces back to a row with an id, a user and a timestamp.</p>
+        <p style="font-size:13.5px;color:var(--mute);font-weight:300;margin-top:11px">Tax is a snapshot on each
+          line — rate id, rate in basis points, net, tax and gross, all in cents. When a government changes a
+          rate, last winter's invoices stay exactly as they were printed.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ WEATHER ============ -->
+<section class="band" id="weather" data-alt="2600" data-station="Summit station">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <div class="eyebrow">05 — Weather <span class="alt">MET Norway Locationforecast 2.0</span></div>
+      <h2 class="h-lg">Lower the gust limit and watch<br>the warnings find their way down.</h2>
+      <p class="lede">Six weather points, six forecasts. Each lift, trip and outdoor slot carries the limit of the
+        building it belongs to. Nothing cancels itself — the warning is the product.</p>
+    </div>
+
+    <div class="split rv" style="margin-bottom:22px">
+      <div class="limitbox">
+        <div class="eyebrow">Gust limit · summit station</div>
+        <div class="limitval num"><span id="limVal">80</span> km/h</div>
+        <input type="range" class="slider" id="limit" min="30" max="120" value="80" step="5"
+          aria-label="Gust limit in km/h">
+        <p style="font-size:13px;color:var(--mute);font-weight:300">Drag it below the forecast gusts and the
+          affected lifts, shuttle trips and outdoor slots light up. This is the <span class="mono"
+          style="color:var(--ice)">done-when</span> check from the scope, running live.</p>
+        <div class="btn-row">
+          <button class="btn danger" id="btnWxCancel" type="button">Cancel outdoor slots for weather</button>
+        </div>
+      </div>
+      <div class="affect" id="affect"></div>
+    </div>
+
+    <div class="wx rv" id="wx"></div>
+
+    <div class="split rv" style="margin-top:26px">
+      <div>
+        <div class="eyebrow" style="margin-bottom:12px">What comes back from api.met.no</div>
+        <div class="metjson"><k>timeseries[0].data.instant.details</k>
+  <k>air_temperature</k>           <v>-9.4</v>
+  <k>wind_speed</k>                <v>17.2</v>
+  <k>wind_speed_of_gust</k>        <v>26.1</v>
+  <k>wind_from_direction</k>       <v>312.0</v>
+  <k>relative_humidity</k>         <v>88.3</v>
+  <k>fog_area_fraction</k>         <v>41.0</v>
+<k>next_1_hours</k>
+  <k>summary.symbol_code</k>       <v>"snow"</v>
+  <k>details.precipitation_amount</k> <v>1.3</v></div>
+        <p style="font-size:12.5px;color:var(--dim);font-weight:300;margin-top:12px">Free, no key, altitude-aware.
+          Fetched once an hour on the server with a proper User-Agent, cached, and shared by every screen —
+          never from the browser. If api.met.no goes quiet, the last reading stays up with its timestamp.</p>
+      </div>
+      <div>
+        <div class="eyebrow" style="margin-bottom:12px">Lobby screen · opened by a private link, no login</div>
+        <div class="tv">
+          <div class="tv-screen">
+            <div class="tv-head">
+              <h4>Hochtal Alpin</h4>
+              <s id="tvClock" class="num">—</s>
+            </div>
+            <div class="tv-grid">
+              <div class="tv-wx"><s>Valley · 1,050 m</s><b class="num" id="tvV">−4°</b>
+                <span id="tvVw">Wind 12 · gusts 19 km/h</span></div>
+              <div class="tv-wx"><s>Summit · 2,600 m</s><b class="num" id="tvS">−14°</b>
+                <span id="tvSw">Wind 38 · gusts 61 km/h</span></div>
+            </div>
+            <div class="tv-lifts" id="tvLifts"></div>
+            <div class="av">
+              <s style="text-decoration:none;font-family:var(--m);font-size:9.5px;letter-spacing:.16em;
+                text-transform:uppercase;color:var(--dim)">Avalanche</s>
+              <div class="av-steps"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></div>
+              <span class="mono" style="font-size:11px;color:var(--hold)">3 · considerable</span>
+              <span class="mono" style="font-size:10px;color:var(--dim);margin-left:auto">entered 06:30 by M. Bauer</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TRANSPORT ============ -->
+<section class="band" id="transport" data-alt="1050" data-station="Valley station"
+  style="background:var(--deep);border-block:1px solid var(--line)">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <div class="eyebrow">06 — Transport and lifts <span class="alt">Own · lifts · external</span></div>
+      <h2 class="h-lg">Ordered stops and a line on the map.<br>No router pretends to know the trails.</h2>
+    </div>
+    <div class="split wide-l">
+      <div class="map rv">
+        <svg viewBox="0 0 760 420" role="img" aria-label="Route map from the valley station to the summit station">
+          <defs>
+            <linearGradient id="rg" x1="0" y1="1" x2="1" y2="0">
+              <stop offset="0" stop-color="#2E8E9C"/><stop offset="1" stop-color="#78E3F0"/>
+            </linearGradient>
+          </defs>
+          <g stroke="rgba(150,185,220,.10)" fill="none" stroke-width="1">
+            <path d="M0 330 Q140 300 250 316 T520 282 T760 250"/>
+            <path d="M0 288 Q150 252 268 272 T530 232 T760 196"/>
+            <path d="M0 246 Q160 206 286 228 T540 182 T760 142"/>
+            <path d="M0 204 Q170 160 300 184 T552 132 T760 92"/>
+            <path d="M0 162 Q180 116 312 140 T562 84 T760 44"/>
+          </g>
+          <path id="routePath" d="M78 356 L214 318 L352 262 L486 196 L612 132 L690 86"
+            stroke="url(#rg)" stroke-width="2.2" fill="none" stroke-linecap="round"
+            stroke-dasharray="1200" stroke-dashoffset="1200"/>
+          <g id="stops"></g>
+        </svg>
+        <span class="map-credit">© OpenStreetMap contributors · Leaflet</span>
+      </div>
+      <div class="rv" style="display:flex;flex-direction:column;gap:14px">
+        <div class="panel">
+          <div class="panel-h"><h3>Today · own transport</h3><span class="r">4 vehicles · 3 drivers</span></div>
+          <div class="affect" style="border:0;border-radius:0">
+            <div class="aff"><span class="aff-k">14:20</span>
+              <span class="aff-n">Pickup · train IC 512 → valley station
+                <s>created from reservation #4412 · 2 pax · Sprinter V-02 · R. Keller</s></span>
+              <span class="pill ok">Crewed</span></div>
+            <div class="aff"><span class="aff-k">15:00</span>
+              <span class="aff-n">Shuttle · valley → chalets, 8 stops
+                <s>Mercedes V-01 · L. Fischer · 11 of 16 seats</s></span>
+              <span class="pill ok">Running</span></div>
+            <div class="aff"><span class="aff-k">16:30</span>
+              <span class="aff-n">Taxi · mid station → hut, on demand
+                <s>Defender T-01 · driver unassigned</s></span>
+              <span class="pill hold">Needs driver</span></div>
+            <div class="aff"><span class="aff-k">17:10</span>
+              <span class="aff-n">Shuttle · chalets → valley station
+                <s>Mercedes V-01 · L. Fischer · overlaps 15:00 run</s></span>
+              <span class="pill warn">Blocked</span></div>
+          </div>
+        </div>
+        <div class="card" style="padding:17px">
+          <div class="eyebrow" style="margin-bottom:10px">Three groups, three behaviours</div>
+          <p style="font-size:13.5px;color:var(--mute);font-weight:300"><b style="color:var(--snow);font-weight:400">Own</b>
+            — shuttle, taxi, car, bicycle, motorbike: vehicles, drivers, trips, seats.
+            <b style="color:var(--snow);font-weight:400">Lifts</b> — cable car, gondola, chairlift, funicular,
+            elevator: status, hours, passes charged to room.
+            <b style="color:var(--snow);font-weight:400">External</b> — plane, train, metro, coach: recorded on the
+            reservation, and it produces the pickup.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ BUILD ============ -->
+<section class="band" id="build" data-alt="1250" data-station="Chalets">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <div class="eyebrow">07 — How it is built <span class="alt">Next.js · NestJS · PostgreSQL</span></div>
+      <h2 class="h-lg">Boring where it has to be boring.</h2>
+    </div>
+    <div class="split rv">
+      <div class="arch">
+        <div class="arch-row"><b>Tenant isolation</b><p>Postgres row-level security. Every request runs in a
+          transaction that opens with <code>set_config('app.tenant_id', $1, true)</code> — transaction-local, so it
+          cannot survive on a pooled connection. Policies read <code>current_setting('app.tenant_id', true)</code>;
+          a missing setting returns null and the query sees nothing, so a mistake fails closed.</p></div>
+        <div class="arch-row"><b>Money</b><p>Integer cents, never floats. <code>charges</code>,
+          <code>payments</code> and <code>charge_voids</code> are insert-only, and the application's database role
+          holds no UPDATE or DELETE on them. The rule lives in the database, not in the UI.</p></div>
+        <div class="arch-row"><b>Tax</b><p>A rate table per complex. Every line stores a snapshot: rate id, basis
+          points, net, tax, gross. Half board posts two lines — accommodation at 10% and meals at 10% — so the
+          invoice splits VAT correctly. Lift passes sit at 13%, drinks and services at 20%.</p></div>
+        <div class="arch-row"><b>Weather</b><p>One hourly server job per weather point against api.met.no with a
+          proper User-Agent, cached and shared. Maps are Leaflet on OpenStreetMap tiles. No keys, no paid tier,
+          nothing that starts charging in month three.</p></div>
+        <div class="arch-row"><b>Hosting</b><p>Ubuntu 24.04, no Docker. Its own Linux user, its own database, its
+          own port, its own Nginx server block. PM2 keeps it up. Nightly <code>pg_dump</code>, seven kept, one
+          restore tested before handover.</p></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div>
+          <div class="eyebrow" style="margin-bottom:12px">GitHub Actions · from milestone 1</div>
+          <div class="pipe">
+            <div><s>On PR</s><b>Lint, test, build. A red check blocks the merge.</b></div>
+            <div><s>On main</s><b>Build on GitHub, ship a release folder over SSH.</b></div>
+            <div><s>Then</s><b>Migrate, switch the symlink, reload with no downtime.</b></div>
+            <div><s>Health</s><b>No answer? It rolls back to the last release by itself.</b></div>
+          </div>
+        </div>
+        <div class="card" style="padding:17px">
+          <div class="eyebrow" style="margin-bottom:10px">Kept out of the MVP, on purpose</div>
+          <p style="font-size:13.5px;color:var(--mute);font-weight:300">Online payment gateways, the guest portal,
+            lift gate hardware, real train and flight ticketing, offline mode for the huts. The data model leaves
+            room for each of them; none of them is built twice.</p>
+        </div>
+        <div class="ms" style="grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr))">
+          <div class="ms-card" style="--p:1"><span class="ms-no">RLS</span>
+            <p style="font-size:12px">Two complexes on one server, proven by a test, not by clicking.</p></div>
+          <div class="ms-card" style="--p:1"><span class="ms-no">OpenAPI</span>
+            <p style="font-size:12px">Swagger from day one, so the guest portal reuses the same API.</p></div>
+          <div class="ms-card" style="--p:1"><span class="ms-no">Devices</span>
+            <p style="font-size:12px">Tablet tills, laptop desks, a lift page that works in gloves.</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ MILESTONES ============ -->
+<section class="band" id="plan" data-alt="1800" data-station="Mid station"
+  style="background:var(--deep);border-block:1px solid var(--line)">
+  <div class="wrap">
+    <div class="sec-head rv">
+      <div class="eyebrow">08 — Delivery <span class="alt">12 weeks · 5 milestones</span></div>
+      <h2 class="h-lg">Each milestone runs on your VPS<br>before it is released.</h2>
+    </div>
+    <div class="ms rv" id="ms"></div>
+    <div class="qa rv" style="margin-top:26px" id="qa"></div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot">
+    <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
+      <div class="logo"><i>▲</i> Altitude <small>Mountain OS</small></div>
+      <p>An interactive demo of the MVP scope: one platform for a mountain tourism complex, one folio per stay,
+        and weather per altitude. Figures and forecasts on this page are seeded demo data from the scope
+        document, not a live complex.</p>
+    </div>
+    <div class="credits">
+      Weather data from <a href="https://api.met.no" target="_blank" rel="noopener">MET Norway</a> (Locationforecast 2.0)<br>
+      Maps © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors<br>
+      Photography: <a href="https://unsplash.com" target="_blank" rel="noopener">Unsplash</a> ·
+      Footage: <a href="https://www.pexels.com" target="_blank" rel="noopener">Pexels</a><br>
+      Terrain rendered with three.js
+    </div>
+  </div>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js"></script>
+<script>
+(function(){
+"use strict";
+var RM = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+var $ = function(s,r){return (r||document).querySelector(s)};
+var ce = function(t,c,h){var e=document.createElement(t); if(c)e.className=c; if(h!=null)e.innerHTML=h; return e};
+var eur = function(c){return "€"+(c/100).toLocaleString("en-IE",{minimumFractionDigits:2,maximumFractionDigits:2})};
+
+/* ---------------- stations ---------------- */
+var STATIONS = [
+  {k:"valley", name:"Valley station",  alt:1050, t:-4,  w:12, g:19, sym:"snow",       lim:95, note:"Parking, train stop, rental, ticket desk"},
+  {k:"hotel",  name:"Main hotel",      alt:1200, t:-5,  w:14, g:23, sym:"cloudy",     lim:95, note:"Rooms, reception, restaurant, spa"},
+  {k:"chalet", name:"Chalets",         alt:1250, t:-6,  w:15, g:26, sym:"lightsnow",  lim:95, note:"Family chalets, booked like rooms"},
+  {k:"mid",    name:"Mid station",     alt:1800, t:-9,  w:24, g:44, sym:"snow",       lim:85, note:"Self-service, ski school meeting point"},
+  {k:"hut",    name:"Mountain hut",    alt:2100, t:-12, w:31, g:58, sym:"fog",        lim:80, note:"Dormitory beds, guided hikes"},
+  {k:"summit", name:"Summit station",  alt:2600, t:-16, w:46, g:79, sym:"heavysnow",  lim:80, note:"Panorama restaurant, top of the cable car"}
+];
+var SYM = {snow:"Snow",lightsnow:"Light snow",heavysnow:"Heavy snow",cloudy:"Cloud",fog:"Fog"};
+
+/* ---------------- film grain ---------------- */
+(function(){
+  var c = $("#grain"), x = c.getContext("2d"), W=0,H=0, last=0;
+  function size(){ W=c.width=Math.ceil(innerWidth/2); H=c.height=Math.ceil(innerHeight/2);
+    c.style.width=innerWidth+"px"; c.style.height=innerHeight+"px"; }
+  size(); addEventListener("resize", size, {passive:true});
+  function draw(t){
+    if(!RM && t-last>72){
+      last=t;
+      var d = x.createImageData(W,H), a=d.data;
+      for(var i=0;i<a.length;i+=4){ var v=(Math.random()*255)|0; a[i]=a[i+1]=a[i+2]=v; a[i+3]=36; }
+      x.putImageData(d,0,0);
+    }
+    requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+})();
+
+/* ---------------- hero: snowfall + letterbox ---------------- */
+(function(){
+  var hero = $("#hero");
+  setTimeout(function(){ hero.classList.add("open"); }, 260);
+  var c = $("#snowfall"), x = c.getContext("2d"), fl=[], W=0,H=0;
+  function size(){ var r=hero.getBoundingClientRect(); W=c.width=r.width; H=c.height=r.height;
+    c.style.width=r.width+"px"; c.style.height=r.height+"px";
+    fl = []; var n = Math.min(190, Math.round(r.width/7));
+    for(var i=0;i<n;i++) fl.push({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.9+.4,
+      s:Math.random()*.55+.18, d:Math.random()*Math.PI*2, o:Math.random()*.5+.18});
+  }
+  size(); addEventListener("resize", size, {passive:true});
+  var vis = true;
+  new IntersectionObserver(function(e){ vis = e[0].isIntersecting; }).observe(hero);
+  function tick(){
+    requestAnimationFrame(tick);
+    if(!vis || RM) return;
+    x.clearRect(0,0,W,H);
+    for(var i=0;i<fl.length;i++){ var p=fl[i];
+      p.y += p.s; p.d += .008; p.x += Math.sin(p.d)*.42;
+      if(p.y>H+4){ p.y=-4; p.x=Math.random()*W; }
+      x.beginPath(); x.arc(p.x,p.y,p.r,0,6.3);
+      x.fillStyle="rgba(233,244,255,"+p.o+")"; x.fill();
+    }
+  }
+  tick();
+})();
+
+/* ---------------- clock ---------------- */
+(function(){
+  function pad(n){return (n<10?"0":"")+n}
+  function tick(){
+    var d=new Date(), s=pad(d.getHours())+":"+pad(d.getMinutes());
+    var a=$("#clock"), b=$("#tvClock");
+    if(a) a.textContent=s;
+    if(b) b.textContent=s+" · "+d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});
+  }
+  tick(); setInterval(tick, 20000);
+})();
+
+/* ---------------- reveal ---------------- */
+(function(){
+  if(RM || !("IntersectionObserver" in window)) return;
+  document.documentElement.classList.add("rv-armed");
+  var io = new IntersectionObserver(function(es){
+    es.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add("in"); io.unobserve(e.target); } });
+  },{rootMargin:"0px 0px -8% 0px",threshold:.08});
+  [].forEach.call(document.querySelectorAll(".rv"), function(el,i){
+    el.style.transitionDelay = (Math.min(i,3)*70)+"ms"; io.observe(el);
+  });
+})();
+
+/* ---------------- altitude rail ---------------- */
+(function(){
+  var line=$("#railLine"), dot=$("#railDot"), read=$("#railAlt");
+  if(!line) return;
+  var pts = [1050,1200,1250,1800,2100,2600];
+  var names = ["Valley 1,050","Hotel 1,200","Chalets 1,250","Mid 1,800","Hut 2,100","Summit 2,600"];
+  var ticks=[];
+  pts.forEach(function(a,i){
+    var p = 1 - (a-1050)/1550;
+    var t = ce("div","rail-tick"); t.style.top=(p*100)+"%";
+    t.appendChild(ce("b")); t.appendChild(ce("span",null,names[i]));
+    line.appendChild(t); ticks.push({el:t,alt:a});
+  });
+  var secs = [].slice.call(document.querySelectorAll("[data-alt]"));
+  function upd(){
+    var mid = innerHeight*0.42, cur = 1050;
+    for(var i=0;i<secs.length;i++){
+      var r = secs[i].getBoundingClientRect();
+      if(r.top <= mid && r.bottom >= mid){ cur = +secs[i].dataset.alt; break; }
+      if(r.top > mid) break;
+      cur = +secs[i].dataset.alt;
+    }
+    var p = 1 - (cur-1050)/1550;
+    dot.style.top = (p*100)+"%";
+    read.textContent = cur.toLocaleString("en-US");
+    ticks.forEach(function(t){ t.el.classList.toggle("on", t.alt===cur); });
+  }
+  upd(); addEventListener("scroll", upd, {passive:true}); addEventListener("resize", upd, {passive:true});
+})();
+
+/* ---------------- 3D ridge ---------------- */
+var RIDGE = (function(){
+  var cv = $("#ridge"); if(!cv || !window.THREE) return {setStorm:function(){}};
+  var ov = $("#ridgeOv");
+  var scene = new THREE.Scene();
+  var FOG_CALM = 0x070C15, FOG_STORM = 0x180C10;
+  scene.fog = new THREE.Fog(FOG_CALM, 48, 135);
+  scene.background = new THREE.Color(FOG_CALM);
+  var cam = new THREE.PerspectiveCamera(42, 2, .5, 400);
+  var rnd;
+  try{ rnd = new THREE.WebGLRenderer({canvas:cv, antialias:true, alpha:false}); }
+  catch(e){ return {setStorm:function(){}}; }
+  rnd.setPixelRatio(Math.min(devicePixelRatio||1, 1.8));
+
+  // deterministic value noise
+  function h2(x,y){ var n=Math.sin(x*127.1+y*311.7)*43758.5453; return n-Math.floor(n); }
+  function vn(x,y){
+    var xi=Math.floor(x), yi=Math.floor(y), xf=x-xi, yf=y-yi;
+    var u=xf*xf*(3-2*xf), v=yf*yf*(3-2*yf);
+    var a=h2(xi,yi), b=h2(xi+1,yi), c=h2(xi,yi+1), d=h2(xi+1,yi+1);
+    return (a*(1-u)+b*u)*(1-v) + (c*(1-u)+d*u)*v;
+  }
+  function fbm(x,y){ var s=0,a=.5,f=1; for(var i=0;i<5;i++){ s+=vn(x*f,y*f)*a; a*=.5; f*=2.03; } return s-.5; }
+
+  var SX=72, SZ=40;
+  function metres(x,z){
+    var t = Math.min(1, Math.max(0, (x+SX/2)/SX));
+    var spine = Math.pow(t, 1.45);
+    var fall = Math.exp(-Math.pow(z/10.5, 2));
+    var m = 900 + (1800*spine) * (0.26 + 0.74*fall);
+    m += fbm(x*0.085+11, z*0.085+5) * (210 + 620*t);
+    m += fbm(x*0.235, z*0.235) * (52 + 150*t);
+    m += fbm(x*0.62, z*0.62) * (16 + 44*t);
+    return m;
+  }
+  function altToY(m){ return (m-820)*0.0094; }
+
+  var geo = new THREE.PlaneGeometry(SX, SZ, 190, 108);
+  geo.rotateX(-Math.PI/2);
+  var pos = geo.attributes.position, col=[];
+  var cRock = new THREE.Color(0x121A26), cMid = new THREE.Color(0x2C3A4E),
+      cSnow = new THREE.Color(0xC9DCEE), cIce = new THREE.Color(0x6FD6E6), tmp = new THREE.Color();
+  for(var i=0;i<pos.count;i++){
+    var x=pos.getX(i), z=pos.getZ(i), m=metres(x,z);
+    pos.setY(i, altToY(m));
+    var s = Math.min(1, Math.max(0, (m-1420)/900));
+    tmp.copy(cRock).lerp(cMid, Math.min(1,Math.max(0,(m-950)/700))).lerp(cSnow, s*s);
+    if(m>2350) tmp.lerp(cIce, (m-2350)/900);
+    col.push(tmp.r,tmp.g,tmp.b);
+  }
+  geo.setAttribute("color", new THREE.Float32BufferAttribute(col,3));
+  geo.computeVertexNormals();
+  var mat = new THREE.MeshStandardMaterial({vertexColors:true, flatShading:true, roughness:.93, metalness:.03});
+  var mesh = new THREE.Mesh(geo, mat); mesh.position.z = 0; scene.add(mesh);
+
+  // mirrored dark mass behind, for depth
+  var geo2 = geo.clone();
+  var m2 = new THREE.Mesh(geo2, new THREE.MeshBasicMaterial({color:0x070B13}));
+  m2.position.set(-14, -1.6, -26); m2.scale.set(1.25,1.1,1); scene.add(m2);
+
+  var hemi = new THREE.HemisphereLight(0x8FD4E8, 0x0A1018, .72); scene.add(hemi);
+  var key = new THREE.DirectionalLight(0xDCEBFA, 1.25); key.position.set(-26, 30, 16); scene.add(key);
+  var rim = new THREE.DirectionalLight(0xFF7A45, .95); rim.position.set(34, 9, -22); scene.add(rim);
+
+  // wind particles
+  var PN = 1400, pg = new THREE.BufferGeometry(), pp = new Float32Array(PN*3), pv = new Float32Array(PN);
+  for(var j=0;j<PN;j++){
+    pp[j*3] = (Math.random()-.5)*SX*1.25;
+    pp[j*3+2] = (Math.random()-.5)*SZ*1.1;
+    pp[j*3+1] = altToY(metres(pp[j*3], pp[j*3+2])) + Math.random()*5 + .4;
+    pv[j] = Math.random()*.6+.35;
+  }
+  pg.setAttribute("position", new THREE.BufferAttribute(pp,3));
+  var pmat = new THREE.PointsMaterial({color:0xBFE6F2, size:.085, transparent:true, opacity:.5,
+    depthWrite:false, blending:THREE.AdditiveBlending});
+  var pts = new THREE.Points(pg, pmat); scene.add(pts);
+
+  // station markers
+  var mkGeo = new THREE.OctahedronGeometry(.4, 0);
+  // the three valley buildings sit within 200 m of each other, so their labels are stepped apart
+  var STEM = [26, 70, 114, 40, 28, 26];
+  var marks = STATIONS.map(function(s, si){
+    // find x where ridge height matches the station altitude
+    var bx=0, bd=1e9;
+    for(var x=-SX/2+2; x<SX/2-2; x+=0.25){
+      var d = Math.abs(metres(x,0)-s.alt);
+      if(d<bd){ bd=d; bx=x; }
+    }
+    var y = altToY(metres(bx,0));
+    var g = new THREE.Group(); g.position.set(bx, y+.55, 0);
+    var mm = new THREE.MeshBasicMaterial({color:0x78E3F0});
+    var o = new THREE.Mesh(mkGeo, mm); g.add(o);
+    var beam = new THREE.Mesh(new THREE.CylinderGeometry(.035,.035,5.5,6),
+      new THREE.MeshBasicMaterial({color:0x78E3F0, transparent:true, opacity:.22}));
+    beam.position.y = 2.7; g.add(beam);
+    scene.add(g);
+    var el = ce("div","mk");
+    el.innerHTML = '<div class="mk-in"><div class="mk-lab"><b>'+s.name+'</b> <em>· '+
+      s.alt.toLocaleString("en-US")+' m</em></div><div class="mk-stem" style="height:'+STEM[si]+'px"></div></div>';
+    ov.appendChild(el);
+    return {s:s, g:g, o:o, beam:beam, el:el, mm:mm, bm:beam.material};
+  });
+
+  var yaw = -0.34, pitch = 0.30, drag=false, lx=0, auto=true;
+  function down(e){ drag=true; auto=false; lx = (e.touches?e.touches[0].clientX:e.clientX); }
+  function move(e){
+    if(!drag) return;
+    var cx = (e.touches?e.touches[0].clientX:e.clientX);
+    yaw += (cx-lx)*0.005; lx = cx;
+    yaw = Math.max(-1.0, Math.min(0.42, yaw));
+  }
+  function up(){ drag=false; setTimeout(function(){auto=true;}, 2600); }
+  cv.addEventListener("mousedown",down); addEventListener("mousemove",move); addEventListener("mouseup",up);
+  cv.addEventListener("touchstart",down,{passive:true}); cv.addEventListener("touchmove",move,{passive:true});
+  cv.addEventListener("touchend",up);
+
+  var storm = 0, stormT = 0, vis = false, fogC = new THREE.Color(FOG_CALM), fogS = new THREE.Color(FOG_STORM);
+  new IntersectionObserver(function(e){ vis = e[0].isIntersecting; },{threshold:.02}).observe(cv);
+
+  function resize(){
+    var w = cv.clientWidth, h = cv.clientHeight;
+    if(!w||!h) return;
+    if(cv.width !== Math.floor(w*rnd.getPixelRatio()) || cv.height !== Math.floor(h*rnd.getPixelRatio())){
+      rnd.setSize(w,h,false); cam.aspect = w/h; cam.updateProjectionMatrix();
+    }
+  }
+  var v3 = new THREE.Vector3(), t0 = performance.now();
+  function frame(now){
+    requestAnimationFrame(frame);
+    if(!vis) return;
+    resize();
+    var dt = Math.min(.05,(now-t0)/1000); t0 = now;
+    stormT += (storm - stormT) * Math.min(1, dt*2.2);
+    if(auto && !RM) yaw += dt*0.028;
+    if(yaw > 0.42) yaw = -1.0;
+    var rad = 64 - stormT*5;
+    cam.position.set(Math.sin(yaw)*rad, 16.5 + Math.sin(pitch)*7 + stormT*2.4, Math.cos(yaw)*rad);
+    cam.lookAt(2, 9.2 + stormT*0.7, 0);
+
+    scene.fog.color.copy(fogC).lerp(fogS, stormT);
+    scene.background.copy(scene.fog.color);
+    scene.fog.far = 135 - stormT*52;
+    rim.intensity = .95 + stormT*0.9;
+    key.intensity = 1.25 - stormT*0.55;
+    hemi.intensity = .72 - stormT*0.3;
+
+    // wind
+    var sp = (0.10 + stormT*0.95);
+    var a = pg.attributes.position.array;
+    for(var j=0;j<PN;j++){
+      a[j*3] += sp * pv[j];
+      a[j*3+1] += Math.sin(now*0.0014 + j)*0.004*(1+stormT*3);
+      if(a[j*3] > SX/2*1.25){ a[j*3] = -SX/2*1.25; a[j*3+2] = (Math.random()-.5)*SZ*1.1;
+        a[j*3+1] = altToY(metres(a[j*3],a[j*3+2])) + Math.random()*5 + .4; }
+    }
+    pg.attributes.position.needsUpdate = true;
+    pmat.opacity = .5 + stormT*.36;
+    pmat.size = .085 + stormT*.055;
+    pmat.color.setHex(stormT>.5 ? 0xFFC6B0 : 0xBFE6F2);
+
+    // markers → screen
+    for(var k=0;k<marks.length;k++){
+      var m = marks[k];
+      m.o.rotation.y += dt*0.7; m.o.rotation.x += dt*0.35;
+      v3.copy(m.g.position).project(cam);
+      var vis2 = v3.z < 1;
+      var px = (v3.x*.5+.5)*cv.clientWidth, py = (-v3.y*.5+.5)*cv.clientHeight;
+      m.el.style.transform = "translate(-50%,-100%) translate("+px.toFixed(1)+"px,"+py.toFixed(1)+"px)";
+      m.el.style.opacity = vis2 ? 1 : 0;
+      var hot = stormT > .4 && m.s.g*(1+stormT*0.9) > m.s.lim;
+      m.el.classList.toggle("warn", hot);
+      var c = hot ? 0xFF6B6B : 0x78E3F0;
+      m.mm.color.setHex(c); m.bm.color.setHex(c);
+      m.o.scale.setScalar(1 + Math.sin(now*0.003 + k)*0.09 + (hot?0.3:0));
+    }
+    rnd.render(scene, cam);
+  }
+  requestAnimationFrame(frame);
+
+  return {
+    setStorm: function(v){ storm = v ? 1 : 0; },
+    setSeason: function(summer){
+      hemi.color.setHex(summer ? 0xA9D8B0 : 0x8FD4E8);
+      mat.color.setHex(summer ? 0x9FBFA6 : 0xFFFFFF);
+    }
+  };
+})();
+
+/* ---------------- storm + season controls ---------------- */
+var stormOn = false;
+(function(){
+  var b = $("#btnStorm"), bs = $("#btnSeason");
+  var hw=$("#hudWind"), hg=$("#hudGust"), hs=$("#hudState");
+  function paint(){
+    hw.textContent = stormOn ? 68 : 22;
+    hg.textContent = stormOn ? 94 : 38;
+    hs.textContent = stormOn ? "Gondola and chairlift warned" : "All lifts running";
+    hs.style.color = stormOn ? "var(--shut)" : "var(--dim)";
+    b.textContent = stormOn ? "Let the wind drop" : "Raise the wind";
+    b.classList.toggle("on", stormOn);
+  }
+  b.addEventListener("click", function(){
+    stormOn = !stormOn; RIDGE.setStorm(stormOn); paint();
+    var l = $("#limit");
+    l.value = stormOn ? 55 : 80; l.dispatchEvent(new Event("input"));
+  });
+  var summer = false;
+  bs.addEventListener("click", function(){
+    summer = !summer; RIDGE.setSeason(summer);
+    bs.textContent = "Season: " + (summer ? "Summer" : "Winter");
+    bs.classList.toggle("on", summer);
+  });
+  paint();
+})();
+
+/* ---------------- module plates ---------------- */
+(function(){
+  var M = [
+    {n:"A", t:"Core and tenants", img:"valley-station", d:"Complexes, buildings with altitude, outlets, staff and roles, seasons, audit log. No self-signup.", tags:["RLS","Audit","Seasons"]},
+    {n:"B", t:"Hotel, chalets, huts", img:"hotel", d:"Rooms in any building, hut beds sold one by one, season prices, board plans, calendar, check-in.", tags:["Board plans","Nightly posting"]},
+    {n:"C", t:"Guest folio", img:"cabin-ridge", d:"One bill per stay. Any outlet charges to a room. Cash or card, split payment, printable invoice.", tags:["Append-only","Void with reason"]},
+    {n:"D", t:"Restaurants and shop", img:"hut-bar", d:"Tills from the valley to the summit. The screen knows whether the meal is in the guest's board plan.", tags:["Board check","Packed lunch","80 mm"]},
+    {n:"E", t:"Equipment rental", img:"skis-stack", d:"Skis, boots, helmets, bikes and e-bikes with sizes and codes. Deposit, return, damage fee, overdue list.", tags:["No double rent","Deposits"]},
+    {n:"F", t:"Services and activities", img:"sauna-modern", d:"One booking engine for sauna, bath, spa, gym, ski school and guided hikes. Slots, capacity, staff.", tags:["Capacity","Headcount"]},
+    {n:"G", t:"Transport and lifts", img:"gondola-summer", d:"Shuttles, taxis, pickups from trains and flights. Lift status from a phone, passes charged to room.", tags:["Ordered stops","No double booking"]},
+    {n:"H", t:"Weather", img:"night-peak", d:"A forecast per building. Limits per complex, warnings on lifts, trips and outdoor slots, cancel for weather.", tags:["MET Norway","Avalanche"]},
+    {n:"I", t:"Dashboard and reports", img:"alpenglow", d:"Occupancy, arrivals with their transport, revenue by outlet, open folios, weather cancellations, CSV.", tags:["To the cent","CSV"]}
+  ];
+  var box = $("#plates");
+  M.forEach(function(m){
+    var el = ce("article","plate");
+    el.innerHTML = '<img src="assets/img/'+m.img+'.jpg" alt="" decoding="async">'
+      + '<span class="plate-no">'+m.n+'</span>'
+      + '<div class="plate-txt"><h3>'+m.t+'</h3><p>'+m.d+'</p><ul>'
+      + m.tags.map(function(t){return "<li>"+t+"</li>"}).join("") + '</ul></div>';
+    box.appendChild(el);
+  });
+})();
+
+/* ---------------- buildings strip ---------------- */
+(function(){
+  var box = $("#bld"); if(!box) return;
+  var IMG = {valley:"valley-station", hotel:"hotel", chalet:"chalets",
+             mid:"mid-station", hut:"hut", summit:"summit-station"};
+  var ALT = {
+    valley:"The valley station, with parking and the lower cable car",
+    hotel:"A snow-covered hotel building in the Alps",
+    chalet:"Wooden chalets on a snowy slope",
+    mid:"Lift machinery at the mid station",
+    hut:"The terrace of a mountain hut above the clouds",
+    summit:"Gondolas arriving at the summit station"
+  };
+  STATIONS.forEach(function(s){
+    var el = ce("article");
+    el.innerHTML = '<img src="assets/img/'+IMG[s.k]+'.jpg" alt="'+ALT[s.k]+'" decoding="async">'
+      + '<span class="bld-alt">'+s.alt.toLocaleString("en-US")+' m</span>'
+      + '<div class="bld-txt"><h4>'+s.name+'</h4><p>'+s.note+'</p></div>';
+    box.appendChild(el);
+  });
+})();
+
+/* ---------------- quote parallax ---------------- */
+(function(){
+  var img = $("#qImg"); if(!img || RM) return;
+  var sec = img.parentElement, on = false, raf = 0;
+  new IntersectionObserver(function(e){ on = e[0].isIntersecting; if(on) tick(); },
+    {threshold:0}).observe(sec);
+  function tick(){
+    if(!on) return;
+    var r = sec.getBoundingClientRect();
+    var p = (r.top + r.height/2 - innerHeight/2) / innerHeight;   // −1 … 1 across the screen
+    img.style.transform = "translateY("+(p*-42).toFixed(1)+"px)";
+    raf = requestAnimationFrame(tick);
+  }
+})();
+
+/* ---------------- reel ---------------- */
+(function(){
+  var CLIPS = [
+    {f:"lift-board", cap:"Valley station · 08:12 · the lift opens"},
+    {f:"trees",      cap:"Chairlift Nordhang · 10:05 · 1,250 → 1,800 m"},
+    {f:"summit",     cap:"Summit station · 12:30 · lunch charged to room 214"},
+    {f:"hero",       cap:"Ridge above the hut · 14:12 · gusts cross the limit"},
+    {f:"night",      cap:"Valley · 23:00 · folio closed at zero"}
+  ];
+  var strip=$("#strip"), vid=$("#reelVid"), src=$("#reelSrc"),
+      cap=$("#reelCap"), idx=$("#reelIdx"), tc=$("#tc");
+  var cur = 0;
+  CLIPS.forEach(function(c,i){
+    var b = ce("button"); b.type="button"; b.setAttribute("role","tab");
+    b.innerHTML = '<img src="assets/img/poster-'+c.f+'.jpg" alt="" loading="lazy" decoding="async">'
+      + '<span>'+("0"+(i+1)).slice(-2)+'</span>';
+    b.addEventListener("click", function(){ play(i); });
+    strip.appendChild(b);
+  });
+  function mark(){
+    [].forEach.call(strip.children, function(b,i){
+      b.classList.toggle("on", i===cur); b.setAttribute("aria-selected", i===cur);
+    });
+  }
+  function play(i){
+    cur = i; var c = CLIPS[i];
+    src.src = "assets/video/"+c.f+".mp4";
+    vid.poster = "assets/img/poster-"+c.f+".jpg";
+    vid.load();
+    var p = vid.play(); if(p && p.catch) p.catch(function(){});
+    cap.textContent = c.cap;
+    idx.textContent = ("0"+(i+1)).slice(-2)+" / 0"+CLIPS.length;
+    mark();
+  }
+  function pad(n){return (n<10?"0":"")+n}
+  vid.addEventListener("timeupdate", function(){
+    var t = vid.currentTime||0;
+    tc.textContent = "00:"+pad(Math.floor(t/60))+":"+pad(Math.floor(t%60))+":"+pad(Math.floor((t%1)*25));
+  });
+  vid.addEventListener("ended", function(){ play((cur+1)%CLIPS.length); });
+  mark();
+  var started = false;
+  new IntersectionObserver(function(e){
+    if(e[0].isIntersecting){ if(!started){ started = true; play(0); } }
+    else { vid.pause(); }
+  },{threshold:.3}).observe(vid);
+})();
+
+/* ---------------- folio engine ---------------- */
+var FOLIO = (function(){
+  var RATES = {acc:{bp:1000,n:"10%"}, food:{bp:1000,n:"10%"}, drink:{bp:2000,n:"20%"},
+               lift:{bp:1300,n:"13%"}, svc:{bp:2000,n:"20%"}};
+  var SEED = [
+    {id:"chg_1a01", out:"Hotel",            d:"Room night · junior suite 214 · 3 ×", g:50400, r:"acc",   s:"night"},
+    {id:"chg_1a02", out:"Hotel",            d:"Half board · 2 adults · 3 nights",     g:29400, r:"acc",   s:"night"},
+    {id:"chg_2b01", out:"Lifts",            d:"6-day pass · adult × 2",               g:31200, r:"lift",  s:"pos"},
+    {id:"chg_3c01", out:"Rental",           d:"Skis, boots, helmets · 2 sets, 3 days",g:8700,  r:"svc",   s:"rental"},
+    {id:"chg_4d01", out:"Summit restaurant",d:"Lunch · table 7 · 2 covers",           g:3800,  r:"food",  s:"order"},
+    {id:"chg_4d02", out:"Summit restaurant",d:"Dôle blanche, bottle · table 7",       g:3400,  r:"drink", s:"order"},
+    {id:"chg_5e01", out:"Mountain hut",     d:"Packed lunch × 2 · ordered 19:40",     g:2400,  r:"food",  s:"order"},
+    {id:"chg_7f31", out:"Ski school",       d:"Private lesson 2 h · instructor L. Marti", g:9000, r:"svc", s:"booking"},
+    {id:"chg_6g01", out:"Spa",              d:"Sauna 19:00 · 2 pax · in the board plan", g:0,  r:"svc",   s:"booking", inc:true}
+  ];
+  var charges, voids, payments, closed;
+
+  function net(g,bp){ return Math.round(g/(1+bp/10000)); }
+  function isVoid(id){ return voids.some(function(v){return v.charge_id===id}); }
+
+  function reset(){
+    charges = SEED.map(function(c){
+      var bp = RATES[c.r].bp, n = net(c.g,bp);
+      return {id:c.id,out:c.out,d:c.d,gross:c.g,rate:c.r,bp:bp,net:n,tax:c.g-n,src:c.s,inc:!!c.inc};
+    });
+    voids = []; payments = []; closed = false;
+    render();
+  }
+  function voidCharge(id, by, reason, note){
+    if(isVoid(id)) return;
+    voids.push({charge_id:id, voided_by:by, voided_at:new Date().toISOString(), reason_code:reason, note:note});
+    render();
+  }
+  function settle(cardPct){
+    if(closed) return;
+    var bal = balance(); if(bal<=0) return;
+    var card = Math.round(bal*cardPct/100), cash = bal-card;
+    payments = [];
+    if(card>0) payments.push({id:"pay_c1", method:"card", amount:card});
+    if(cash>0) payments.push({id:"pay_x1", method:"cash", amount:cash});
+    closed = true; render();
+  }
+  function live(){ return charges.filter(function(c){return !isVoid(c.id)}); }
+  function sumG(a){ return a.reduce(function(s,c){return s+c.gross},0); }
+  function paid(){ return payments.reduce(function(s,p){return s+p.amount},0); }
+  function balance(){ return sumG(live()) - paid(); }
+
+  function render(){
+    var body = $("#ledgerBody"); body.innerHTML = "";
+    charges.forEach(function(c){
+      var v = voids.filter(function(x){return x.charge_id===c.id})[0];
+      var tr = ce("tr", (v?"void ":"") + (c.inc?"inc":""));
+      var dsc = '<div class="dsc">'+c.d+'</div>';
+      if(v){
+        dsc += '<div class="voidnote"><span class="stamp">void</span>'
+          + '<span>'+v.reason_code+'</span><s>·</s><span>'+v.note+'</span><s>·</s>'
+          + '<span>'+v.voided_by+'</span><s>·</s><span>'
+          + new Date(v.voided_at).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})+'</span></div>';
+      }
+      tr.innerHTML = '<td class="out">'+c.out+'</td><td>'+dsc+'</td>'
+        + '<td class="vat">'+RATES[c.rate].n+'<br>'+eur(c.net)+' + '+eur(c.tax)+'</td>'
+        + '<td class="amt">'+(c.inc && c.gross===0 ? "included" : eur(c.gross))+'</td>';
+      body.appendChild(tr);
+    });
+
+    var vg = sumG(charges.filter(function(c){return isVoid(c.id)}));
+    $("#tCharges").textContent = eur(sumG(live()));
+    $("#tVoid").textContent = vg ? "− "+eur(vg) : eur(0);
+    $("#tVoid").style.color = vg ? "var(--shut)" : "";
+    $("#tPaid").textContent = eur(paid());
+    var bal = balance();
+    $("#tBal").textContent = eur(bal);
+    $("#balRow").classList.toggle("zero", bal===0 && payments.length>0);
+    $("#stamp").classList.toggle("on", closed && bal===0);
+
+    // outlet bars
+    var byOut = {};
+    live().forEach(function(c){ byOut[c.out] = (byOut[c.out]||0) + c.gross; });
+    charges.forEach(function(c){ if(byOut[c.out]===undefined) byOut[c.out]=0; });
+    var max = Math.max.apply(null, Object.keys(byOut).map(function(k){return byOut[k]}).concat([1]));
+    var bars = $("#bars"); bars.innerHTML = "";
+    Object.keys(byOut).sort(function(a,b){return byOut[b]-byOut[a]}).forEach(function(k){
+      var val = byOut[k];
+      var row = ce("div","bar-row"+(val===0?" nil":""));
+      row.innerHTML = '<div class="bar-top"><span>'+k+'</span><b>'+eur(val)+'</b></div>'
+        + '<div class="bar-trk"><div class="bar-fil" style="width:0%"></div></div>';
+      bars.appendChild(row);
+      requestAnimationFrame(function(){
+        $(".bar-fil",row).style.width = (val===0 ? 2 : Math.max(3,(val/max)*100))+"%";
+      });
+    });
+
+    // payments
+    var pb = $("#payBox");
+    pb.innerHTML = "";
+    if(payments.length){
+      payments.forEach(function(p){
+        var el = ce("div","payline"+(p.method==="cash"?" cash":""));
+        el.innerHTML = '<i></i><span>'+(p.method==="card"?"Card · terminal 2":"Cash · drawer 1")
+          +'</span><b>'+eur(p.amount)+'</b>';
+        pb.appendChild(el);
+      });
+      var note = ce("p",null,"Recorded by staff, no gateway in the MVP. The cash report reads these two rows; "
+        + "the outlet reports never look at them.");
+      note.style.cssText = "font-size:12px;color:var(--dim);font-weight:300;line-height:1.55";
+      pb.appendChild(note);
+    } else {
+      var hint = ce("p",null,"Balance due "+eur(bal)+" · no payment recorded yet.");
+      hint.style.cssText = "font-family:var(--m);font-size:11.5px;color:var(--dim);letter-spacing:.05em";
+      pb.appendChild(hint);
+
+      var lab = ce("label");
+      lab.style.cssText = "font-family:var(--m);font-size:10.5px;letter-spacing:.14em;"
+        + "text-transform:uppercase;color:var(--dim);display:flex;flex-direction:column;gap:8px";
+      var cap = ce("span");
+      var inp = ce("input");
+      inp.type = "range"; inp.className = "slider"; inp.id = "split";
+      inp.min = 0; inp.max = 100; inp.step = 5; inp.value = SPLIT;
+      inp.setAttribute("aria-label", "Card share of the payment");
+      lab.appendChild(cap); lab.appendChild(inp);
+      pb.appendChild(lab);
+
+      var prev = ce("p");
+      prev.style.cssText = "font-family:var(--m);font-size:12.5px;color:var(--mute);font-variant-numeric:tabular-nums";
+      pb.appendChild(prev);
+
+      var draw = function(){
+        var card = Math.round(bal*SPLIT/100);
+        cap.innerHTML = 'Card <b style="color:var(--ice);font-weight:400">'+SPLIT+'%</b>'
+          + ' · cash <b style="color:var(--alpen);font-weight:400">'+(100-SPLIT)+'%</b>';
+        prev.innerHTML = 'Card '+eur(card)+' &nbsp;·&nbsp; cash '+eur(bal-card);
+      };
+      inp.addEventListener("input", function(){ SPLIT = +inp.value; draw(); });
+      draw();
+    }
+
+    // VAT grid
+    var byRate = {};
+    live().forEach(function(c){
+      if(c.gross===0) return;
+      var k = RATES[c.rate].n;
+      byRate[k] = byRate[k] || {net:0,tax:0,g:0};
+      byRate[k].net += c.net; byRate[k].tax += c.tax; byRate[k].g += c.gross;
+    });
+    var vg2 = $("#vatGrid"); vg2.innerHTML = "";
+    Object.keys(byRate).sort().forEach(function(k){
+      var r = byRate[k];
+      vg2.appendChild(ce("div",null,'<s>VAT '+k+'</s>'+eur(r.net)+' net<br>'+eur(r.tax)+' tax'));
+    });
+    $("#btnVoid").disabled = isVoid("chg_7f31") || closed;
+    $("#btnSettle").disabled = closed || balance()<=0;
+  }
+
+  var SPLIT = 50;
+  return {reset:reset, voidCharge:voidCharge,
+    settle:function(){ settle(SPLIT); },
+    isVoided:function(id){ return isVoid(id); },
+    get split(){ return SPLIT; }};
+})();
+FOLIO.reset();
+
+$("#btnVoid").addEventListener("click", function(){
+  FOLIO.voidCharge("chg_7f31", "usr_bauer_m (manager)", "weather", "gusts 94 km/h at 2,600 m");
+  document.getElementById("folio").scrollIntoView({behavior: RM?"auto":"smooth", block:"start"});
+});
+$("#btnSettle").addEventListener("click", function(){ FOLIO.settle(); });
+$("#btnReset").addEventListener("click", function(){ FOLIO.reset(); });
+
+/* ---------------- weather wall ---------------- */
+(function(){
+  var box = $("#wx"), aff = $("#affect"), limEl = $("#limVal"), slider = $("#limit");
+  var AFFECTED = [
+    {k:"Lift",  n:"Cable car · valley → mid station", s:"1,050 → 1,800 m · limit from the mid station", pt:"mid",    base:"ok"},
+    {k:"Lift",  n:"Gondola · mid → summit station",   s:"1,800 → 2,600 m · limit from the summit",      pt:"summit", base:"ok"},
+    {k:"Lift",  n:"Chairlift Nordhang",               s:"1,250 → 1,800 m · limit from the mid station", pt:"mid",    base:"ok"},
+    {k:"Lift",  n:"Funicular · car park → hotel",     s:"underground, 1,050 → 1,200 m",                 pt:"valley", base:"ok"},
+    {k:"Trip",  n:"Shuttle 15:00 · valley → chalets", s:"8 stops · 11 of 16 seats",                     pt:"chalet", base:"ok"},
+    {k:"Slot",  n:"Ski school 16:40 · private lesson",s:"outdoor · mid station · L. Marti · folio #4412",pt:"mid",   base:"ok"},
+    {k:"Slot",  n:"Guided hike 09:00 · hut ridge",    s:"outdoor · mountain hut · 6 of 8 places",       pt:"hut",    base:"ok"},
+    {k:"Slot",  n:"Sauna 19:00 · thermal bath",       s:"indoor · main hotel · never weather-dependent",pt:"hotel",  base:"indoor"}
+  ];
+  var cards = {}, rows = [];
+
+  function dial(cv, g, lim){
+    var x = cv.getContext("2d"), S=52, r=20;
+    cv.width = S*2; cv.height = S*2; cv.style.width=S+"px"; cv.style.height=S+"px";
+    x.scale(2,2); x.clearRect(0,0,S,S);
+    x.lineWidth = 3.4; x.lineCap="round";
+    x.beginPath(); x.arc(S/2,S/2,r,Math.PI*0.75,Math.PI*2.25);
+    x.strokeStyle = "rgba(150,185,220,.16)"; x.stroke();
+    var p = Math.min(1, g/130);
+    x.beginPath(); x.arc(S/2,S/2,r,Math.PI*0.75,Math.PI*0.75+Math.PI*1.5*p);
+    x.strokeStyle = g>lim ? "#FF6B6B" : "#78E3F0"; x.stroke();
+    // limit needle
+    var la = Math.PI*0.75 + Math.PI*1.5*Math.min(1,lim/130);
+    x.beginPath(); x.lineWidth=1.4;
+    x.moveTo(S/2+Math.cos(la)*(r-6), S/2+Math.sin(la)*(r-6));
+    x.lineTo(S/2+Math.cos(la)*(r+5), S/2+Math.sin(la)*(r+5));
+    x.strokeStyle = "#F2C14E"; x.stroke();
+  }
+
+  STATIONS.forEach(function(s){
+    var c = ce("article","wx-card");
+    c.innerHTML =
+      '<div class="wx-top"><h4>'+s.name+'</h4><s>'+s.alt.toLocaleString("en-US")+' m</s></div>'
+      + '<div class="wx-temp"><span class="t">'+s.t+'°</span><em>'+SYM[s.sym]+'</em></div>'
+      + '<div class="wx-dial"><canvas></canvas><div class="wx-gust">gusts<b class="g">'+s.g+'</b>wind '+s.w+' km/h</div></div>'
+      + '<div class="wx-meta"><span>limit <b class="lim">'+s.lim+'</b> km/h</span><span>'+s.note.split(",")[0]+'</span></div>'
+      + '<div class="wx-warn" hidden>▲ over the limit · lifts and outdoor slots warned</div>';
+    box.appendChild(c);
+    cards[s.k] = {el:c, s:s, cv:$("canvas",c)};
+  });
+
+  AFFECTED.forEach(function(a){
+    var r = ce("div","aff");
+    r.innerHTML = '<span class="aff-k">'+a.k+'</span>'
+      + '<span class="aff-n">'+a.n+'<s>'+a.s+'</s></span>'
+      + '<span class="pill ok">Running</span>';
+    aff.appendChild(r); rows.push({a:a, el:r, pill:$(".pill",r)});
+  });
+
+  function gustOf(s){ return Math.round(s.g * (stormOn ? 1.22 : 1)); }
+
+  function paint(){
+    var lim = +slider.value;
+    limEl.textContent = lim;
+    STATIONS.forEach(function(s){
+      var c = cards[s.k], g = gustOf(s);
+      var myLim = Math.min(lim, s.lim);
+      var over = g > myLim;
+      $(".g",c.el).textContent = g;
+      $(".lim",c.el).textContent = myLim;
+      $(".t",c.el).textContent = (stormOn ? s.t-3 : s.t)+"°";
+      c.el.classList.toggle("alert", over);
+      $(".wx-warn",c.el).hidden = !over;
+      dial(c.cv, g, myLim);
+    });
+    rows.forEach(function(r,i){
+      var st = cards[r.a.pt].s, g = gustOf(st), myLim = Math.min(lim, st.lim);
+      var p = r.pill;
+      if(r.a.base === "indoor"){ p.className="pill ok"; p.textContent="Indoor"; r.el.classList.remove("hit"); return; }
+      var hit = g > myLim;
+      setTimeout(function(){
+        r.el.classList.toggle("hit", hit);
+        p.className = "pill " + (hit ? "warn" : "ok");
+        p.textContent = hit ? (r.a.k==="Lift" ? "Warned · gusts "+g : "Warned") : (r.a.k==="Lift" ? "Running" : "On");
+      }, RM ? 0 : i*70);
+    });
+    // lobby tv
+    var v = cards.valley.s, su = cards.summit.s;
+    $("#tvV").textContent = (stormOn?v.t-3:v.t)+"°";
+    $("#tvS").textContent = (stormOn?su.t-3:su.t)+"°";
+    $("#tvVw").textContent = "Wind "+(stormOn?v.w+14:v.w)+" · gusts "+gustOf(v)+" km/h";
+    $("#tvSw").textContent = "Wind "+(stormOn?su.w+22:su.w)+" · gusts "+gustOf(su)+" km/h";
+    $("#tvalley").textContent = (stormOn?v.t-3:v.t)+"°";
+    tvLifts(lim);
+  }
+
+  function tvLifts(lim){
+    var L = [
+      {n:"Cable car · valley → mid", pt:"mid"},
+      {n:"Gondola · mid → summit",   pt:"summit"},
+      {n:"Chairlift Nordhang",       pt:"mid"},
+      {n:"Funicular · car park",     pt:"valley"}
+    ];
+    var box2 = $("#tvLifts"); box2.innerHTML="";
+    L.forEach(function(l){
+      var st = cards[l.pt].s, g = gustOf(st), myLim = Math.min(lim, st.lim);
+      var closed = g > myLim + 12, hold = !closed && g > myLim;
+      var cls = closed ? "warn" : (hold ? "hold" : "ok");
+      var txt = closed ? "Closed · wind" : (hold ? "On hold" : "Open");
+      var el = ce("div","tv-lift");
+      el.innerHTML = '<span>'+l.n+'</span><span class="pill '+cls+'">'+txt+'</span>';
+      box2.appendChild(el);
+    });
+  }
+
+  slider.addEventListener("input", paint);
+  $("#btnWxCancel").addEventListener("click", function(){
+    FOLIO.voidCharge("chg_7f31", "usr_bauer_m (manager)", "weather", "gusts 94 km/h at 2,600 m");
+    var b = $("#btnWxCancel");
+    b.textContent = "Cancelled · 1 slot, 1 charge voided, 1 guest to call";
+    b.disabled = true;
+    setTimeout(function(){
+      document.getElementById("folio").scrollIntoView({behavior:RM?"auto":"smooth",block:"start"});
+    }, 450);
+  });
+  paint();
+  window.__wxPaint = paint;
+})();
+
+/* storm toggle also repaints the weather wall */
+$("#btnStorm").addEventListener("click", function(){
+  if(window.__wxPaint) setTimeout(window.__wxPaint, 10);
+});
+
+/* ---------------- route stops ---------------- */
+(function(){
+  var g = $("#stops"), path = $("#routePath");
+  if(!g) return;
+  var S = [
+    {x:78,  y:356, n:"Valley station · 1,050"},
+    {x:214, y:318, n:"Car park P2"},
+    {x:352, y:262, n:"Main hotel · 1,200"},
+    {x:486, y:196, n:"Chalets · 1,250"},
+    {x:612, y:132, n:"Mid station · 1,800"},
+    {x:690, y:86,  n:"Mountain hut · 2,100"}
+  ];
+  S.forEach(function(s,i){
+    var c = document.createElementNS("http://www.w3.org/2000/svg","circle");
+    c.setAttribute("cx",s.x); c.setAttribute("cy",s.y); c.setAttribute("r",5.2);
+    c.setAttribute("fill","#04070D"); c.setAttribute("stroke","#78E3F0"); c.setAttribute("stroke-width","1.8");
+    var t = document.createElementNS("http://www.w3.org/2000/svg","text");
+    var right = i >= S.length-2;              // the top two labels would run off the plate
+    t.setAttribute("x", right ? s.x-11 : s.x+11);
+    t.setAttribute("y", s.y-7);
+    if(right) t.setAttribute("text-anchor","end");
+    t.setAttribute("class","stop-l"); t.setAttribute("fill","#93A7C0");
+    t.textContent = (i+1)+" · "+s.n;
+    var n = document.createElementNS("http://www.w3.org/2000/svg","text");
+    n.setAttribute("x",s.x); n.setAttribute("y",s.y+3.4); n.setAttribute("text-anchor","middle");
+    n.setAttribute("font-size","7"); n.setAttribute("font-family","IBM Plex Mono, monospace");
+    n.setAttribute("fill","#78E3F0"); n.textContent = i+1;
+    g.appendChild(c); g.appendChild(t); g.appendChild(n);
+  });
+  if(RM){ path.style.strokeDashoffset = 0; return; }
+  new IntersectionObserver(function(e){
+    if(e[0].isIntersecting){
+      path.style.transition = "stroke-dashoffset 2.3s cubic-bezier(.22,.8,.3,1)";
+      path.style.strokeDashoffset = "0";
+    }
+  },{threshold:.3}).observe(path);
+})();
+
+/* ---------------- milestones + q&a ---------------- */
+(function(){
+  var MS = [
+    {n:"01",t:"Foundation",p:"Data model and a short architecture note, the server set up on your VPS, CI/CD deploying by itself, login, tenants, buildings with altitude, outlets, staff, roles, seasons, super admin.",w:"Weeks 1–2",pay:"15%",f:.15},
+    {n:"02",t:"Hotel and folio",p:"Rooms, chalets and hut beds, season prices, board plans, reservations with arrival details, calendar, check-in and check-out, nightly posting, folio, payments, voids, invoice.",w:"Weeks 3–5",pay:"25%",f:.40},
+    {n:"03",t:"POS, rental, services",p:"Tills with the board check, packed lunches, equipment rental, the booking engine with slots and staff, guided outing headcount.",w:"Weeks 6–8",pay:"25%",f:.65},
+    {n:"04",t:"Transport, lifts, weather",p:"Transport types, vehicles, drivers, routes on the map, shuttles, taxis, pickups, lift status and passes, weather points, forecasts, limits, warnings, cancel for weather.",w:"Weeks 9–10",pay:"20%",f:.85},
+    {n:"05",t:"Dashboard and handover",p:"Owner dashboard and reports, lobby screen, avalanche level, backups, bug fixing, and the handover checklist in full.",w:"Weeks 11–12",pay:"15%",f:1}
+  ];
+  var box = $("#ms");
+  MS.forEach(function(m){
+    var el = ce("article","ms-card"); el.style.setProperty("--p", m.f);
+    el.innerHTML = '<span class="ms-no">Milestone '+m.n+'</span><h4>'+m.t+'</h4><p>'+m.p+'</p>'
+      + '<div class="ms-foot"><span>'+m.w+'</span><b>'+m.pay+'</b></div>';
+    box.appendChild(el);
+  });
+
+  var QA = [
+    {q:"A guest charges a summit lunch and a ski lesson to the room, the lesson is cancelled for wind, and they pay the rest half card and half cash. How does each outlet still see its own revenue?",
+     a:"Charges and payments are two separate insert-only lists on the folio, all in cents. The lunch is a charge on the summit restaurant, the lesson a charge on the ski school. The wind cancellation inserts a row in <code>charge_voids</code> — the charge itself is untouched. Outlet revenue is read from charges that have no void row, grouped by outlet, so the restaurant reads €72.00 and the ski school reads €0.00. The split payment is two rows in <code>payments</code>; the cash report reads those and nothing else. The weather report reads the voided €90.00 with its reason. One automated test covers exactly this scenario."},
+    {q:"If nothing is ever edited, how is a void stored, and who can do it?",
+     a:"As its own insert: charge id, the user, a UTC timestamp shown in the complex's local time, a reason code (weather, error, guest complaint) and a free-text note. A charge counts toward the balance and the reports only when it has no void row. Voiding is manager-only and checked on the API, not hidden in the UI, and the application's database role holds no UPDATE or DELETE on charges, payments or voids. On the folio the line stays visible, struck through, with who, when and why beside it."},
+    {q:"Food, rooms and lift passes carry different VAT. Where does the tax live?",
+     a:"On the line. Each complex keeps its own rate table, and every product, service, room type and pass points at one rate. When a charge is posted the line stores a snapshot — rate id, rate in basis points, net, tax and gross, all in cents — so a later rate change never rewrites last winter's invoices. Half board posts two lines, accommodation and meals, each with its own rate. The invoice totals per rate."},
+    {q:"NestJS uses a connection pool. How does row-level security not leak between requests?",
+     a:"Every request runs inside a transaction whose first statement is <code>set_config('app.tenant_id', $1, true)</code>. The <code>true</code> makes it transaction-local, like <code>SET LOCAL</code>, so Postgres clears it on commit or rollback and it cannot survive on the connection. The tenant comes from the token and lives in AsyncLocalStorage for the request; one scoped database layer wraps every query, so no controller sets it by hand. Policies read <code>current_setting('app.tenant_id', true)</code> — missing means null, which matches no rows, so a mistake fails closed."},
+    {q:"What is the riskiest part?",
+     a:"The money: nightly room and board posting in each complex's local time, the board-plan check at the till, and weather voids landing on the right folios. That is why the folio is built first and tested hard before the other modules plug into it. Second is the weather warning engine, which has to match forecast windows to the right lifts, trips and outdoor slots. Routes are ordered stops with a line between them rather than freehand drawing, which keeps that risk in the parts the pilots actually judge."}
+  ];
+  var qbox = $("#qa");
+  QA.forEach(function(x,i){
+    var el = ce("div","qa-item");
+    el.innerHTML = '<button class="qa-q" type="button" aria-expanded="false"><s>'+("0"+(i+1)).slice(-2)
+      +'</s><span>'+x.q+'</span><i>+</i></button><div class="qa-a"><div>'+x.a+'</div></div>';
+    var btn = $(".qa-q",el), ans = $(".qa-a",el);
+    btn.addEventListener("click", function(){
+      var open = el.classList.toggle("open");
+      btn.setAttribute("aria-expanded", open);
+      ans.style.maxHeight = open ? (ans.firstElementChild.offsetHeight+4)+"px" : "0px";
+    });
+    qbox.appendChild(el);
+  });
+})();
+
+/* smooth anchors */
+[].forEach.call(document.querySelectorAll('.topnav a'), function(a){
+  a.addEventListener("click", function(e){
+    var t = document.querySelector(a.getAttribute("href"));
+    if(!t) return;
+    e.preventDefault();
+    t.scrollIntoView({behavior: RM?"auto":"smooth", block:"start"});
+  });
+});
+})();
+</script>
